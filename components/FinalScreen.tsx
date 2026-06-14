@@ -105,14 +105,18 @@ export function FinalScreen({
         &gt; A new construct has been forged. It is yours to deploy, fork, or bury in the chamber.
       </p>
 
-      <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1fr_300px]">
-        <div className="relative border border-neutral-800 bg-neutral-950/50">
-          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-800 bg-neutral-950/80 px-4 py-2 text-[10px] uppercase tracking-[0.25em] text-neutral-500 backdrop-blur">
-            <span>~/souls/{(designation || "unnamed").toLowerCase()}.soul.md</span>
-            <span className="text-acid">forged</span>
+      <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        {/* min-w-0 on this column prevents long unwrapped lines in the
+            soul preview from blowing out the grid width on narrow viewports */}
+        <div className="relative min-w-0 border border-neutral-800 bg-neutral-950/50">
+          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-neutral-800 bg-neutral-950/80 px-4 py-2 text-[10px] uppercase tracking-[0.25em] text-neutral-500 backdrop-blur">
+            <span className="truncate">~/souls/{(designation || "unnamed").toLowerCase()}.soul.md</span>
+            <span className="shrink-0 text-acid">forged</span>
           </div>
-          {/* let the whole soul render inline; the page scrolls, not a cramped inner box */}
-          <pre className="p-5 font-mono text-[12.5px] leading-relaxed text-neutral-300">
+          {/* whitespace-pre-wrap preserves the markdown line breaks but
+              allows long lines to wrap. break-words handles long URLs /
+              ISO timestamps that have no spaces */}
+          <pre className="whitespace-pre-wrap break-words p-5 font-mono text-[12.5px] leading-relaxed text-neutral-300">
             <SyntaxColored text={soulMd} />
           </pre>
         </div>
