@@ -33,8 +33,20 @@ Open <http://localhost:3000>.
 | `GROQ_API_KEY` | Recommended | Free, fast primary provider. Sign up at [console.groq.com/keys](https://console.groq.com/keys). |
 | `OPENROUTER_API_KEY` | Recommended | Paid fallback (~1.4¢/session). Sign up at [openrouter.ai/keys](https://openrouter.ai/keys) and set a daily spend cap. |
 | `NEXT_PUBLIC_SITE_URL` | Yes for prod | Canonical site URL. Used by sitemap, OG image, and metadata. Default: `https://evoke.ai`. |
+| `NEXT_PUBLIC_SUPABASE_URL` | For accounts | Supabase project URL. Without this, accounts and cloud vault are disabled — local-only mode still works. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For accounts | Supabase anon key. Safe to ship to the browser — Row-Level Security guards data. |
 
 Communion needs at least one of `GROQ_API_KEY` or `OPENROUTER_API_KEY`. Both together is best — Groq handles the free fast path, OpenRouter is the paid permissive fallback.
+
+### Supabase setup (for accounts + public Chamber)
+
+1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard) (free tier)
+2. Settings → API → copy the **Project URL** and **anon public key** into `.env.local`
+3. SQL Editor → paste `supabase/migrations/0001_init.sql` → Run
+4. Authentication → URL Configuration → set **Site URL** to your domain (e.g. `https://evoke-two.vercel.app`)
+5. Authentication → Providers:
+   - **Email** is on by default (magic link works out of the box)
+   - **GitHub** — register an OAuth app at [github.com/settings/developers](https://github.com/settings/developers), set the callback to `https://<your-supabase-id>.supabase.co/auth/v1/callback`, paste client ID and secret into Supabase
 
 ---
 
@@ -46,7 +58,9 @@ Communion needs at least one of `GROQ_API_KEY` or `OPENROUTER_API_KEY`. Both tog
 | `/forge` | The nine-phase interrogation. Accepts `?fresh=1` to wipe state, `?load=<id>&phase=<phase>` to restore a saved soul. |
 | `/chamber` | Local soul vault (localStorage-backed). |
 | `/support` | Donation page. |
-| `/auth` | "Coming with Black Suit" stub. Not indexed. |
+| `/auth` | Sign in / sign up (magic link + GitHub OAuth). |
+| `/auth/onboard` | First-time username picker. |
+| `/profile/[username]` | Public profile + that user's public souls. |
 | `/api/communion` | Server route. Walks the per-branch provider chain. |
 
 ---

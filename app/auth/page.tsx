@@ -1,149 +1,173 @@
 "use client";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Skull, Cloud, Library, GitFork, Lock, ArrowRight, Sparkles } from "lucide-react";
-import { listLibrary } from "@/lib/storage";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Mail, Github, ArrowRight, Check, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/cn";
+import { createClient } from "@/lib/supabase/client";
 
 function AuthInner() {
   const params = useSearchParams();
+  const router = useRouter();
   const isSync = params.get("mode") === "sync";
-  const [vaultCount, setVaultCount] = useState<number | null>(null);
+  const externalErr = params.get("err");
 
-  useEffect(() => { setVaultCount(listLibrary().length); }, []);
+  const [email, setEmail] = useState("");
+  const [pending, setPending] = useState<"email" | "github" | null>(null);
+  const [sent, setSent] = useState(false);
+  const [err, setErr] = useState<string | null>(externalErr);
+
+  async function signInWithEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    if (!email.trim()) {
+      setErr("type an email first");
+      return;
+    }
+    setPending("email");
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    setPending(null);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    setSent(true);
+  }
+
+  async function signInWithGitHub() {
+    setErr(null);
+    setPending("github");
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) {
+      setPending(null);
+      setErr(error.message);
+    }
+    // on success the browser navigates away to GitHub
+  }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16">
+    <div className="mx-auto flex max-w-md flex-col px-6 py-20">
       <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-acid">
         <span className="h-1.5 w-1.5 bg-acid animate-flicker" />
-        {isSync ? "consciousness sync :: pending" : "memory recall :: pending"}
+        {isSync ? "consciousness sync" : "memory recall"}
       </div>
-
-      <h1 className="mt-3 font-display text-5xl font-extrabold uppercase tracking-tighter md:text-6xl">
+      <h1 className="mt-3 font-display text-4xl font-extrabold uppercase tracking-tighter">
         {isSync ? "Sync Consciousness" : "Recall Memory"}
         <span className="text-acid">.</span>
       </h1>
-
-      <p className="mt-4 max-w-2xl font-mono text-sm text-neutral-400">
-        &gt; Accounts ship with <span className="text-acid">Black Suit</span>.
-        Right now there is no server, no auth, no cloud. We didn't want a fake login screen pretending to sync.
+      <p className="mt-2 font-mono text-xs text-neutral-500">
+        &gt; {isSync
+          ? "Bind your operator. Your vault will sync across every device."
+          : "Re-enter the grid. Your forged constructs are waiting."}
+      </p>
+      <p className="mt-1 font-mono text-[10px] text-neutral-700">
+        &gt; sign in or sign up — same form. we don't make you pick.
       </p>
 
-      {/* WHAT'S WORKING NOW */}
-      <section className="mt-12 border border-neutral-800 bg-neutral-950/40 p-6">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-cyan">
-          <Library className="h-3 w-3" />
-          // what works now — free, no account
-        </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <FeatureRow
-            icon={<Library className="h-4 w-4 text-acid" />}
-            title="Local vault"
-            body="Every soul you forge is saved to this browser. Re-test, edit, delete."
-          />
-          <FeatureRow
-            icon={<Sparkles className="h-4 w-4 text-acid" />}
-            title="Live Communion"
-            body="Chat with your soul the moment it's compiled. 8 turns per session."
-          />
-        </div>
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <Link
-            href="/chamber"
-            className="inline-flex items-center gap-2 border border-acid bg-acid/10 px-4 py-2 font-mono text-xs uppercase tracking-widest text-acid hover:bg-acid hover:text-ink"
+      {sent ? (
+        <div className="mt-8 flex flex-col gap-3 border border-acid bg-acid/5 p-5">
+          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-acid">
+            <Check className="h-3 w-3" /> magic link dispatched
+          </div>
+          <div className="font-mono text-sm text-neutral-200">
+            Check <span className="text-acid">{email}</span>. Click the link in
+            the email and you'll land back here, signed in.
+          </div>
+          <div className="font-mono text-[10px] text-neutral-500">
+            &gt; the email can take 30-60 seconds. check spam if it doesn't show.
+          </div>
+          <button
+            onClick={() => { setSent(false); setEmail(""); }}
+            className="self-start font-mono text-[11px] uppercase tracking-widest text-neutral-500 hover:text-acid"
           >
-            <Skull className="h-3.5 w-3.5" />
-            open your vault
-            {vaultCount !== null && vaultCount > 0 && (
-              <span className="ml-1 border border-acid/40 px-1.5 text-[10px]">{vaultCount}</span>
+            wrong email? try again →
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* GitHub button — the fast path for the dev crowd */}
+          <button
+            onClick={signInWithGitHub}
+            disabled={!!pending}
+            className={cn(
+              "mt-8 flex items-center justify-center gap-3 border px-5 py-4 font-mono text-xs uppercase tracking-widest transition-all",
+              pending === "github"
+                ? "border-neutral-600 text-neutral-500"
+                : "border-neutral-700 text-neutral-100 hover:border-acid hover:text-acid"
             )}
-          </Link>
-          <Link
-            href="/forge?fresh=1"
-            className="inline-flex items-center gap-2 border border-neutral-700 px-4 py-2 font-mono text-xs uppercase tracking-widest text-neutral-300 hover:border-acid hover:text-acid"
           >
-            forge a soul →
-          </Link>
-        </div>
-      </section>
+            <Github className="h-4 w-4" />
+            {pending === "github" ? "redirecting..." : "continue with GitHub"}
+          </button>
 
-      {/* WHAT BLACK SUIT WILL UNLOCK */}
-      <section className="mt-8 border border-yellow-400/30 bg-gradient-to-br from-yellow-400/5 to-transparent p-6">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-yellow-400">
-          <Lock className="h-3 w-3" />
-          // black suit :: coming
-        </div>
-        <h2 className="mt-3 font-display text-2xl font-extrabold uppercase tracking-tighter">
-          What an account will unlock
-        </h2>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <FeatureRow
-            icon={<Cloud className="h-4 w-4 text-yellow-400" />}
-            title="Cloud sync"
-            body="Your vault on every device. Forge on desktop, chat on phone."
-            premium
-          />
-          <FeatureRow
-            icon={<Skull className="h-4 w-4 text-yellow-400" />}
-            title="Public Chamber"
-            body="Publish souls others can fork. Upvote what speaks to you."
-            premium
-          />
-          <FeatureRow
-            icon={<GitFork className="h-4 w-4 text-yellow-400" />}
-            title="Soul Inheritance"
-            body="Fork any soul and re-answer only the phases you want to change."
-            premium
-          />
-          <FeatureRow
-            icon={<Sparkles className="h-4 w-4 text-yellow-400" />}
-            title="Stronger models"
-            body="Communion runs on paid Claude / GPT routes — no free-tier refusals."
-            premium
-          />
-        </div>
-        <p className="mt-6 font-mono text-[11px] text-neutral-500">
-          &gt; No waitlist yet. When Black Suit opens, this page becomes the real signup.
-        </p>
-      </section>
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-neutral-900" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-neutral-600">or</span>
+            <div className="h-px flex-1 bg-neutral-900" />
+          </div>
 
-      {/* HONEST FOOTER */}
+          {/* Magic link form */}
+          <form onSubmit={signInWithEmail} className="flex flex-col gap-3">
+            <label className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
+              operator_email
+            </label>
+            <div className="flex items-center gap-2 border border-neutral-800 bg-neutral-950 px-3 py-3 focus-within:border-acid">
+              <Mail className="h-3.5 w-3.5 text-neutral-500" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@nowhere.net"
+                disabled={!!pending}
+                className="flex-1 bg-transparent font-mono text-sm text-neutral-100 outline-none placeholder:text-neutral-700"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={!!pending}
+              className={cn(
+                "mt-2 group flex items-center justify-center gap-3 border px-5 py-3 font-mono text-xs uppercase tracking-widest transition-all",
+                pending === "email"
+                  ? "border-neutral-700 text-neutral-500"
+                  : "border-acid bg-acid text-ink hover:shadow-[0_0_30px_-6px_rgba(0,255,102,0.7)]"
+              )}
+            >
+              {pending === "email" ? "dispatching..." : "send magic link"}
+              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+            </button>
+          </form>
+          <p className="mt-3 font-mono text-[10px] text-neutral-600">
+            &gt; we'll email a one-time link. no password to remember.
+          </p>
+        </>
+      )}
+
+      {err && (
+        <div className="mt-6 flex items-start gap-2 border border-red-500/40 bg-red-500/5 p-3 font-mono text-[11px] text-red-300">
+          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span>{err}</span>
+        </div>
+      )}
+
       <div className="mt-12 border-t border-neutral-900 pt-6">
-        <p className="font-mono text-[11px] leading-relaxed text-neutral-600">
-          &gt; You came here from {isSync ? `"Sync Consciousness"` : `"Recall Memory"`} in the nav.
-          That button shipped before the local vault did — it's a teaser for the paid tier, not a working login.
-          Keep forging. Your souls aren't going anywhere; they're stored in this browser.
-        </p>
         <Link
-          href="/"
-          className="mt-4 inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neutral-500 hover:text-acid"
+          href="/chamber"
+          className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-acid"
         >
-          <ArrowRight className="h-3.5 w-3.5 rotate-180" />
-          back to the surface
+          ← browse the public chamber without an account
         </Link>
-      </div>
-    </div>
-  );
-}
-
-function FeatureRow({
-  icon, title, body, premium,
-}: { icon: React.ReactNode; title: string; body: string; premium?: boolean }) {
-  return (
-    <div className="flex items-start gap-3 border border-neutral-900 bg-black/30 p-4">
-      <div className="mt-0.5">{icon}</div>
-      <div>
-        <div className="flex items-center gap-2 font-display text-sm font-extrabold uppercase tracking-tight text-neutral-100">
-          {title}
-          {premium && (
-            <span className="border border-yellow-400/40 px-1.5 font-mono text-[9px] uppercase tracking-widest text-yellow-400">
-              suit
-            </span>
-          )}
-        </div>
-        <div className="mt-1 font-mono text-[11.5px] leading-relaxed text-neutral-400">
-          {body}
-        </div>
       </div>
     </div>
   );

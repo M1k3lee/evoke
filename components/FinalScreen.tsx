@@ -13,15 +13,20 @@ export function FinalScreen({
   designation,
   onReset,
   onReenterCommunion,
+  onPublish,
+  soulId,
 }: {
   soulMd: string;
   designation: string;
   onReset: () => void;
   onReenterCommunion?: () => void;
+  onPublish?: () => Promise<{ ok: boolean; error?: string }>;
+  soulId?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [publishErr, setPublishErr] = useState<string | null>(null);
 
   function copy() {
     try {
@@ -45,10 +50,22 @@ export function FinalScreen({
   }
 
   async function publish() {
-    // TODO: Supabase insert — simulated for now
+    if (!onPublish) {
+      // signed out — kick to /auth, but preserve the soul context with
+      // a hint so the post-onboard flow could bring them back here
+      evoke.error({ title: "SIGN IN TO PUBLISH", body: "Public Chamber requires an account." });
+      window.location.href = "/auth?mode=sync";
+      return;
+    }
+    setPublishErr(null);
     setPublishing(true);
-    await new Promise((r) => setTimeout(r, 2200));
+    const result = await onPublish();
     setPublishing(false);
+    if (!result.ok) {
+      setPublishErr(result.error ?? "publish failed");
+      evoke.error({ title: "COULDN'T PUBLISH", body: result.error ?? "unknown" });
+      return;
+    }
     setPublished(true);
     evoke.success(SUCCESS.PUBLISHED);
   }
@@ -120,6 +137,11 @@ export function FinalScreen({
           >
             {published ? "In the Chamber" : "Publish to the Chamber"}
           </ActionBtn>
+          {publishErr && (
+            <div className="border border-red-500/40 bg-red-500/5 p-2 font-mono text-[10.5px] text-red-300">
+              &gt; {publishErr}
+            </div>
+          )}
           <button
             onClick={onReset}
             className="mt-2 flex items-center justify-center gap-2 border border-neutral-800 px-4 py-3 font-mono text-xs uppercase tracking-widest text-neutral-500 hover:border-neutral-600 hover:text-neutral-200"

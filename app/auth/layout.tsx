@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Sync Consciousness — Coming with Black Suit",
+  title: "Sign In / Sign Up",
   description:
-    "Cloud sync, public chamber, soul forking, and stronger models ship with the EVOKE Black Suit tier. For now, everything lives in your local vault.",
-  // not a useful page to index until accounts are real
-  robots: { index: false, follow: true },
+    "Bind your operator to EVOKE. Sync your soul vault across devices, publish to the public Chamber, and upvote what speaks to you.",
   alternates: { canonical: "/auth" },
 };
 

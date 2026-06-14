@@ -1,8 +1,14 @@
-"use client";
 import Link from "next/link";
 import { Skull, Zap } from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
+import { NavAuthCluster } from "./NavAuthCluster";
 
-export function Nav() {
+// rendered as a server component so we can read the session cookie
+// without flashing the "signed out" state on every navigation.
+
+export async function Nav() {
+  const user = await getCurrentUser();
+
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-800 bg-ink/80 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
@@ -19,18 +25,10 @@ export function Nav() {
           <Link href="/chamber" className="px-3 py-2 hover:text-acid flex items-center gap-1.5">
             <Skull className="h-3.5 w-3.5" /> The Chamber
           </Link>
-          <Link
-            href="/auth"
-            className="ml-2 border border-neutral-700 px-3 py-2 hover:border-acid hover:text-acid"
-          >
-            Recall Memory
-          </Link>
-          <Link
-            href="/auth?mode=sync"
-            className="ml-1 border border-acid bg-acid/10 px-3 py-2 text-acid hover:bg-acid hover:text-ink"
-          >
-            Sync Consciousness
-          </Link>
+          <NavAuthCluster
+            username={user?.profile?.username ?? null}
+            hasSession={!!user}
+          />
         </nav>
       </div>
     </header>

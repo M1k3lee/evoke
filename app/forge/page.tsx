@@ -8,6 +8,8 @@ import { extractDNA } from "@/lib/linguisticDNA";
 import { generateSoulMarkdown } from "@/lib/generateSoul";
 import { tasteToTone } from "@/lib/tasteTest";
 import { saveDraft, loadDraft, clearDraft, getSoul, commitToLibrary } from "@/lib/storage";
+import { commitCloudSoul, getCloudSoul } from "@/lib/db/souls";
+import { createClient } from "@/lib/supabase/client";
 
 import { DesignationStep } from "@/components/DesignationStep";
 import { BranchSelect } from "@/components/BranchSelect";
@@ -53,27 +55,43 @@ function ForgeInner() {
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
-  // mount: priority is ?load=<id> (from chamber), then in-progress draft.
+  // mount: priority is ?cloud=<id> > ?load=<id> > in-progress draft.
+  // ?cloud is for chamber-published souls; ?load is local-vault souls.
   useEffect(() => {
+    const cloudId = searchParams.get("cloud");
     const loadId = searchParams.get("load");
     const targetPhase = searchParams.get("phase") as Phase | null;
-    if (loadId) {
-      const rec = getSoul(loadId);
-      if (rec) {
-        setLoadedId(rec.id);
-        const restored: ForgeState = {
-          ...rec.state,
-          phase: targetPhase && PHASE_ORDER.includes(targetPhase) ? targetPhase : "communion",
-        };
-        setState(restored);
-        return;
+
+    (async () => {
+      if (cloudId) {
+        const rec = await getCloudSoul(cloudId);
+        if (rec) {
+          setLoadedId(rec.id);
+          const restored: ForgeState = {
+            ...rec.state_json,
+            phase: targetPhase && PHASE_ORDER.includes(targetPhase) ? targetPhase : "communion",
+          };
+          setState(restored);
+          return;
+        }
       }
-    }
-    // no explicit load — try to resume an in-progress draft
-    const draft = loadDraft();
-    if (draft && draft.phase !== "complete" && draft.phase !== "designation") {
-      setState(draft);
-    }
+      if (loadId) {
+        const rec = getSoul(loadId);
+        if (rec) {
+          setLoadedId(rec.id);
+          const restored: ForgeState = {
+            ...rec.state,
+            phase: targetPhase && PHASE_ORDER.includes(targetPhase) ? targetPhase : "communion",
+          };
+          setState(restored);
+          return;
+        }
+      }
+      const draft = loadDraft();
+      if (draft && draft.phase !== "complete" && draft.phase !== "designation") {
+        setState(draft);
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -216,15 +234,55 @@ function ForgeInner() {
     setHarvesting(true);
     await new Promise((r) => setTimeout(r, 2200));
     setHarvesting(false);
-    // commit (or update) the library record on completion
     const finalState: ForgeState = { ...stateRef.current, phase: "complete" };
-    const rec = commitToLibrary(finalState, loadedId ?? undefined);
-    setLoadedId(rec.id);
+    const finalSoulMd = generateSoulMarkdown(finalState);
+
+    // if signed in, commit to cloud (and use the cloud id going forward).
+    // if not, fall back to the localStorage library.
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    let nextLoadedId = loadedId;
+    if (user) {
+      // is the loadedId a cloud uuid? if yes, update in place; if no
+      // (it's a local-storage id), create a new cloud record.
+      const looksLikeCloudId = loadedId && /^[0-9a-f-]{36}$/.test(loadedId);
+      const cloudRec = await commitCloudSoul(finalState, finalSoulMd, {
+        id: looksLikeCloudId ? loadedId! : undefined,
+      });
+      if (cloudRec) nextLoadedId = cloudRec.id;
+    } else {
+      const rec = commitToLibrary(finalState, loadedId ?? undefined);
+      nextLoadedId = rec.id;
+    }
+
+    setLoadedId(nextLoadedId);
     setState(finalState);
-    // strip ?load=&phase= from the URL so a refresh doesn't re-trigger load
-    if (searchParams.get("load") || searchParams.get("phase")) {
+
+    if (searchParams.get("load") || searchParams.get("phase") || searchParams.get("cloud")) {
       router.replace("/forge");
     }
+  }
+
+  // publish the current soul to the public Chamber. only valid after
+  // complete() has committed it. used by FinalScreen.
+  async function publishCurrentSoul(): Promise<{ ok: boolean; error?: string }> {
+    if (!loadedId) return { ok: false, error: "soul not saved yet" };
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "sign in to publish" };
+
+    // make sure it's a cloud record — if it's a localStorage one we
+    // can't publish (no DB row exists).
+    const looksLikeCloudId = /^[0-9a-f-]{36}$/.test(loadedId);
+    if (!looksLikeCloudId) return { ok: false, error: "this soul was forged before you signed in. re-forge to publish." };
+
+    const { error } = await supabase
+      .from("souls")
+      .update({ visibility: "public" })
+      .eq("id", loadedId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   }
 
   function reset() {
@@ -255,6 +313,8 @@ function ForgeInner() {
         designation={state.designation || "UNNAMED"}
         onReset={reset}
         onReenterCommunion={reenterCommunion}
+        onPublish={publishCurrentSoul}
+        soulId={loadedId}
       />
     );
   }
