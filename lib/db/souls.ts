@@ -7,6 +7,7 @@
 
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import type { ForgeState, Branch } from "@/lib/types";
+import { withFreshCommunion } from "@/lib/types";
 
 export type CloudSoul = {
   id: string;
@@ -40,15 +41,20 @@ export async function commitCloudSoul(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // NEVER persist the conversation. it's private to the live session.
+  // stripping here means the published row simply doesn't contain it —
+  // no amount of API poking can read another operator's chat.
+  const persisted = withFreshCommunion(state);
+
   const payload = {
     user_id: user.id,
-    designation: state.designation || "UNNAMED",
-    branch: state.branch ?? "BUILD",
-    state_json: state,
+    designation: persisted.designation || "UNNAMED",
+    branch: persisted.branch ?? "BUILD",
+    state_json: persisted,
     soul_md: soulMd,
     visibility: opts.visibility ?? "private",
-    mission: state.intent?.mission?.trim() || null,
-    spice_level: (state.intent?.spice ?? 1) as 1|2|3|4,
+    mission: persisted.intent?.mission?.trim() || null,
+    spice_level: (persisted.intent?.spice ?? 1) as 1|2|3|4,
   };
 
   if (opts.id) {

@@ -1,4 +1,5 @@
 import type { ForgeState } from "./types";
+import { withFreshCommunion } from "./types";
 
 // localStorage persistence. no backend. no auth. no problem.
 //
@@ -85,12 +86,14 @@ export function getSoul(id: string): SoulRecord | null {
 // user re-enters Communion from the FinalScreen and we update the
 // saved soul rather than spawning a duplicate.
 export function commitToLibrary(state: ForgeState, id?: string): SoulRecord {
+  // don't store the conversation with the soul — fresh chat on reopen.
+  const persisted = withFreshCommunion(state);
   const record: SoulRecord = {
     id: id ?? `soul-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    designation: state.designation || "UNNAMED",
-    branch: state.branch,
+    designation: persisted.designation || "UNNAMED",
+    branch: persisted.branch,
     createdAt: Date.now(),
-    state,
+    state: persisted,
   };
   const existing = listLibrary().filter((r) => r.id !== record.id);
   const next = [record, ...existing];

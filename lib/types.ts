@@ -173,3 +173,12 @@ export const INITIAL_STATE: ForgeState = {
 
 // session-turn cap for free communion. revisit when accounts ship.
 export const COMMUNION_TURN_CAP = 8;
+
+// a soul's conversation is private to whoever is talking to it RIGHT
+// NOW. it must never be persisted into the soul record (or it leaks to
+// anyone who opens the published soul) and must never be inherited when
+// someone else opens a soul (they get a fresh chat). this strips the
+// communion slice back to empty. call it at every save and every load.
+export function withFreshCommunion(state: ForgeState): ForgeState {
+  return { ...state, communion: { messages: [], pending: false, error: null } };
+}

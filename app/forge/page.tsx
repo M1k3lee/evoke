@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { INITIAL_STATE, PHASE_ORDER } from "@/lib/types";
+import { INITIAL_STATE, PHASE_ORDER, withFreshCommunion } from "@/lib/types";
 import type { Branch, ChatMessage, DyadChoice, ForgeState, Phase, PersonalizedTaste, TasteOption, UtteranceTuning, CoherenceReport } from "@/lib/types";
 import type { Intent } from "@/lib/intent";
 import { extractDNA } from "@/lib/linguisticDNA";
@@ -49,7 +49,13 @@ function ForgeInner() {
   const searchParams = useSearchParams();
   const [state, setState] = useState<ForgeState>(INITIAL_STATE);
   const [harvesting, setHarvesting] = useState(false);
+  // loadedId = the cloud/local record we're editing IN PLACE. null means
+  // "saving creates a new record" — which is exactly what a fork needs.
   const [loadedId, setLoadedId] = useState<string | null>(null);
+  // when a non-owner opens a public soul, we record where it came from
+  // so the UI can say "forked from @author" and saving spawns a copy
+  // owned by the viewer instead of trying (and failing) to overwrite.
+  const [forkedFrom, setForkedFrom] = useState<string | null>(null);
   // keep a ref so async sends read the freshest state (no stale closures)
   // stateRef exists because async fetches close over stale state. read
   // the actual current state inside callbacks via stateRef.current,
@@ -70,11 +76,30 @@ function ForgeInner() {
       if (cloudId) {
         const rec = await getCloudSoul(cloudId);
         if (rec) {
-          setLoadedId(rec.id);
-          const restored: ForgeState = {
+          // who is opening this? only the creator can edit in place.
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          const isOwner = !!user && user.id === rec.user_id;
+
+          // ALWAYS start communion fresh. the conversation belongs to
+          // whoever is talking to the soul right now — never inherited.
+          const restored: ForgeState = withFreshCommunion({
             ...rec.state_json,
             phase: targetPhase && PHASE_ORDER.includes(targetPhase) ? targetPhase : "communion",
-          };
+          });
+
+          if (isOwner) {
+            // editing your own soul — save updates it in place
+            setLoadedId(rec.id);
+            setForkedFrom(null);
+          } else {
+            // someone else's soul. this is a fork: clear loadedId so a
+            // save creates a NEW record owned by the viewer, never an
+            // overwrite of the original. RLS would block the overwrite
+            // anyway, but we make the intent explicit in the UX.
+            setLoadedId(null);
+            setForkedFrom(rec.id);
+          }
           setState(restored);
           return;
         }
@@ -83,10 +108,11 @@ function ForgeInner() {
         const rec = getSoul(loadId);
         if (rec) {
           setLoadedId(rec.id);
-          const restored: ForgeState = {
+          setForkedFrom(null);
+          const restored: ForgeState = withFreshCommunion({
             ...rec.state,
             phase: targetPhase && PHASE_ORDER.includes(targetPhase) ? targetPhase : "communion",
-          };
+          });
           setState(restored);
           return;
         }
@@ -561,8 +587,9 @@ function ForgeInner() {
   function reset() {
     clearDraft();
     setLoadedId(null);
+    setForkedFrom(null);
     setState(INITIAL_STATE);
-    if (searchParams.get("load") || searchParams.get("phase")) {
+    if (searchParams.get("load") || searchParams.get("phase") || searchParams.get("cloud")) {
       router.replace("/forge");
     }
   }
@@ -588,6 +615,7 @@ function ForgeInner() {
         onReenterCommunion={reenterCommunion}
         onPublish={publishCurrentSoul}
         soulId={loadedId}
+        isFork={!!forkedFrom}
       />
     );
   }

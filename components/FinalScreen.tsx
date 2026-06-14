@@ -15,6 +15,7 @@ export function FinalScreen({
   onReenterCommunion,
   onPublish,
   soulId,
+  isFork,
 }: {
   soulMd: string;
   designation: string;
@@ -22,6 +23,7 @@ export function FinalScreen({
   onReenterCommunion?: () => void;
   onPublish?: () => Promise<{ ok: boolean; error?: string }>;
   soulId?: string | null;
+  isFork?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const [published, setPublished] = useState(false);
@@ -102,7 +104,9 @@ export function FinalScreen({
         <span className="text-neutral-700">soul.md</span>
       </h1>
       <p className="mt-3 max-w-2xl font-mono text-sm text-neutral-500">
-        &gt; A new construct has been forged. It is yours to deploy, fork, or bury in the chamber.
+        {isFork
+          ? <>&gt; A fork has been forged — your own copy, owned by you. The original is untouched. Tune it, deploy it, or publish it as your own.</>
+          : <>&gt; A new construct has been forged. It is yours to deploy, fork, or bury in the chamber.</>}
       </p>
 
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
