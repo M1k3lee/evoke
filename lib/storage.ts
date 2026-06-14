@@ -1,5 +1,5 @@
 import type { ForgeState } from "./types";
-import { withFreshCommunion } from "./types";
+import { withCleanSession } from "./types";
 
 // localStorage persistence. no backend. no auth. no problem.
 //
@@ -87,7 +87,7 @@ export function getSoul(id: string): SoulRecord | null {
 // saved soul rather than spawning a duplicate.
 export function commitToLibrary(state: ForgeState, id?: string): SoulRecord {
   // don't store the conversation with the soul — fresh chat on reopen.
-  const persisted = withFreshCommunion(state);
+  const persisted = withCleanSession(state);
   const record: SoulRecord = {
     id: id ?? `soul-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     designation: persisted.designation || "UNNAMED",

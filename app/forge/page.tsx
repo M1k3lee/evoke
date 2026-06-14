@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { INITIAL_STATE, PHASE_ORDER, withFreshCommunion } from "@/lib/types";
+import { INITIAL_STATE, PHASE_ORDER, withCleanSession } from "@/lib/types";
 import type { Branch, ChatMessage, DyadChoice, ForgeState, Phase, PersonalizedTaste, TasteOption, UtteranceTuning, CoherenceReport } from "@/lib/types";
 import type { Intent } from "@/lib/intent";
 import { extractDNA } from "@/lib/linguisticDNA";
@@ -83,7 +83,7 @@ function ForgeInner() {
 
           // ALWAYS start communion fresh. the conversation belongs to
           // whoever is talking to the soul right now — never inherited.
-          const restored: ForgeState = withFreshCommunion({
+          const restored: ForgeState = withCleanSession({
             ...rec.state_json,
             phase: targetPhase && PHASE_ORDER.includes(targetPhase) ? targetPhase : "communion",
           });
@@ -109,7 +109,7 @@ function ForgeInner() {
         if (rec) {
           setLoadedId(rec.id);
           setForkedFrom(null);
-          const restored: ForgeState = withFreshCommunion({
+          const restored: ForgeState = withCleanSession({
             ...rec.state,
             phase: targetPhase && PHASE_ORDER.includes(targetPhase) ? targetPhase : "communion",
           });
@@ -132,6 +132,7 @@ function ForgeInner() {
     if (searchParams.get("fresh") === "1") {
       clearDraft();
       setLoadedId(null);
+      setForkedFrom(null);
       setState(INITIAL_STATE);
       router.replace("/forge");
     }

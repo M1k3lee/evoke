@@ -7,7 +7,7 @@
 
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import type { ForgeState, Branch } from "@/lib/types";
-import { withFreshCommunion } from "@/lib/types";
+import { withCleanSession } from "@/lib/types";
 
 export type CloudSoul = {
   id: string;
@@ -44,7 +44,7 @@ export async function commitCloudSoul(
   // NEVER persist the conversation. it's private to the live session.
   // stripping here means the published row simply doesn't contain it —
   // no amount of API poking can read another operator's chat.
-  const persisted = withFreshCommunion(state);
+  const persisted = withCleanSession(state);
 
   const payload = {
     user_id: user.id,
