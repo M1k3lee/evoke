@@ -76,7 +76,10 @@ export default function OnboardPage() {
       setErr(result.reason);
       return;
     }
-    router.replace("/forge?fresh=1");
+    // hard nav (not router.replace) so the root layout re-renders with
+    // the new profile. router.replace serves a cached Nav that was
+    // rendered before the profile existed → "Pick a Handle" sticks.
+    window.location.assign("/forge?fresh=1");
   }
 
   if (bootChecking) {
