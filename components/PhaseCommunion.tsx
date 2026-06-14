@@ -27,6 +27,7 @@ export function PhaseCommunion({
   onBack,
   onFinalize,
   onClear,
+  onFixContradiction,
 }: {
   designation: string;
   branch: Branch;
@@ -40,6 +41,7 @@ export function PhaseCommunion({
   onBack: () => void;
   onFinalize: () => void;
   onClear: () => void;
+  onFixContradiction?: (c: { description: string; fields: string[]; suggestedFix: string }) => Promise<{ note: string } | null>;
 }) {
   const [draft, setDraft] = useState("");
   const [reviseFor, setReviseFor] = useState<string | null>(null);
@@ -93,7 +95,15 @@ export function PhaseCommunion({
         </p>
       </div>
 
-      {coherence && <div className="mt-4"><CoherenceBanner report={coherence} onJumpToPhase={onJumpTo} /></div>}
+      {coherence && (
+        <div className="mt-4">
+          <CoherenceBanner
+            report={coherence}
+            onJumpToPhase={onJumpTo}
+            onFix={onFixContradiction ?? (async () => null)}
+          />
+        </div>
+      )}
 
       <div
         ref={listRef}

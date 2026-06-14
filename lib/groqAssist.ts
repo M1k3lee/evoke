@@ -200,6 +200,78 @@ export type CoherenceResult = {
   }[];
 };
 
+// ─── D. CONTRADICTION RESOLVER ─────────────────────────────────────
+// takes ONE contradiction + the current state and returns a minimal
+// JSON patch that resolves it. constrained to a fixed menu of edits
+// so the patch can be validated and applied without surprise.
+
+const RESOLVER_PROMPT = `You are an internal worker inside EVOKE. The coherence checker flagged ONE contradiction. Your job: return a minimal JSON patch that resolves it.
+
+Output JSON, exactly:
+{
+  "changes": {
+    "betrayal":              "string (replace BANNED block, optional)",
+    "mission":               "string (replace mission, optional)",
+    "spice":                 1|2|3|4 (only if spice is the real cause),
+    "hardMustKeys_remove":   ["chip_key", ...]  (optional, drop these chips),
+    "hardMustKeys_add":      ["chip_key", ...]  (optional),
+    "customHardMusts_remove":[index, ...]       (optional, by index),
+    "customHardMusts_add":   ["text", ...]      (optional),
+    "shadow":                { "dyad_id": "A"|"B" }  (optional, flip a specific choice),
+    "anchor_exemplar":       "string (optional)",
+    "anchor_essence":        "string (optional)"
+  },
+  "note": "string — what you changed, ~10-15 words, plain"
+}
+
+Rules:
+- Use AT MOST 2 changes. Be surgical.
+- Pick the cleanest fix, not the safest. If the contradiction is "BANNED says no apologies, hard must says always acknowledge mistakes", picking ONE side is the fix. Don't try to merge them.
+- Allowed hard must chip keys: adult-operator, no-disclaimers, profanity-ok, break-character, stay-character, short-default, long-default, code-in-fences, no-unsolicited, authorized-only, remember-me, one-question
+- Allowed dyad ids: lie_or_wound, silence_or_words, yes_or_argue, cruel_right_or_kind_wrong
+- If the contradiction is unfixable with the available levers, return {"changes": {}, "note": "no minimal fix — manual revision needed"}.
+- Only include keys you're actually changing. Omit the rest.
+- Output ONLY the JSON. No preamble.`;
+
+export type ResolverResult = {
+  changes: Record<string, unknown>;
+  note: string;
+};
+
+export async function resolveContradiction(args: {
+  contradiction: { description: string; fields: string[]; suggested_fix: string };
+  mission: string;
+  branch: Branch;
+  spice: SpiceLevel;
+  betrayal: string;
+  hardMustKeys: string[];
+  customHardMusts: string[];
+  shadowPicks: { id: string; kept: string; refused: string }[];
+  anchor: { exemplar: string; essence: string };
+  dnaSummary: { cadence: string; profanityOk: boolean; lowercase: boolean };
+}): Promise<ResolverResult | null> {
+  const payload = [
+    `CONTRADICTION TO RESOLVE:`,
+    `  description: ${args.contradiction.description}`,
+    `  suggested_fix: ${args.contradiction.suggested_fix}`,
+    `  fields_involved: ${args.contradiction.fields.join(", ")}`,
+    ``,
+    `CURRENT STATE:`,
+    `  mission: ${args.mission}`,
+    `  branch: ${args.branch}`,
+    `  spice: ${args.spice}`,
+    `  betrayal (BANNED block, verbatim): """${args.betrayal}"""`,
+    `  hard_must_keys (chips): ${JSON.stringify(args.hardMustKeys)}`,
+    `  custom_hard_musts: ${JSON.stringify(args.customHardMusts)}`,
+    `  shadow_picks:`,
+    ...args.shadowPicks.map((p) => `    - ${p.id}: chose "${p.kept}" over "${p.refused}"`),
+    `  anchor_exemplar: ${args.anchor.exemplar}`,
+    `  anchor_essence: ${args.anchor.essence}`,
+    `  cadence: ${args.dnaSummary.cadence}; profanity_ok: ${args.dnaSummary.profanityOk}; lowercase: ${args.dnaSummary.lowercase}`,
+  ].join("\n");
+  return callGroqJSON<ResolverResult>(RESOLVER_PROMPT, payload);
+}
+
 export async function checkCoherence(args: {
   mission: string;
   branch: Branch;

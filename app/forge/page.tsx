@@ -288,6 +288,97 @@ function ForgeInner() {
     }
   }
 
+  // resolve a single contradiction via groq + apply the patch in-place.
+  // returns the resolver note so the banner can show "fixed: X".
+  async function applyContradictionFix(c: {
+    description: string;
+    fields: string[];
+    suggestedFix: string;
+  }): Promise<{ note: string } | null> {
+    const s = stateRef.current;
+    const shadowPicks = Object.entries(s.shadow).map(([id, choice]) => {
+      const dyad = SHADOW_DYADS.find((d) => d.id === id);
+      if (!dyad) return null;
+      return choice === "A"
+        ? { id, kept: dyad.optionA, refused: dyad.optionB }
+        : { id, kept: dyad.optionB, refused: dyad.optionA };
+    }).filter(Boolean) as { id: string; kept: string; refused: string }[];
+
+    const res = await fetch("/api/coherence-resolve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contradiction: {
+          description: c.description,
+          fields: c.fields,
+          suggested_fix: c.suggestedFix,
+        },
+        mission: s.intent.mission,
+        branch: s.branch ?? "BUILD",
+        spice: s.intent.spice,
+        betrayal: s.betrayal,
+        hardMustKeys: s.intent.hardMustKeys,
+        customHardMusts: s.intent.customHardMusts,
+        shadowPicks,
+        anchor: s.anchor,
+        dnaSummary: s.dna ? {
+          cadence: s.dna.cadence,
+          profanityOk: s.dna.profanity,
+          lowercase: s.dna.hasLowercaseBias,
+        } : { cadence: "neutral", profanityOk: false, lowercase: false },
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const ch = data?.changes ?? {};
+    // apply the patch deterministically. only known keys are honored.
+    setState((cur) => {
+      let next = { ...cur };
+      let intent = { ...next.intent };
+      if (typeof ch.betrayal === "string") next.betrayal = ch.betrayal;
+      if (typeof ch.mission === "string") intent.mission = ch.mission;
+      if (ch.spice && [1,2,3,4].includes(ch.spice)) intent.spice = ch.spice;
+      if (Array.isArray(ch.hardMustKeys_remove)) {
+        intent.hardMustKeys = intent.hardMustKeys.filter((k) => !ch.hardMustKeys_remove.includes(k));
+      }
+      if (Array.isArray(ch.hardMustKeys_add)) {
+        const adds = ch.hardMustKeys_add.filter((k: string) => !intent.hardMustKeys.includes(k));
+        intent.hardMustKeys = [...intent.hardMustKeys, ...adds];
+      }
+      if (Array.isArray(ch.customHardMusts_remove)) {
+        intent.customHardMusts = intent.customHardMusts.filter((_, i) => !ch.customHardMusts_remove.includes(i));
+      }
+      if (Array.isArray(ch.customHardMusts_add)) {
+        intent.customHardMusts = [...intent.customHardMusts, ...ch.customHardMusts_add.filter((t: any) => typeof t === "string" && t.trim())];
+      }
+      if (ch.shadow && typeof ch.shadow === "object") {
+        next.shadow = { ...next.shadow };
+        for (const [id, choice] of Object.entries(ch.shadow)) {
+          if (choice === "A" || choice === "B") next.shadow[id] = choice;
+        }
+      }
+      if (typeof ch.anchor_exemplar === "string") {
+        next.anchor = { ...next.anchor, exemplar: ch.anchor_exemplar };
+      }
+      if (typeof ch.anchor_essence === "string") {
+        next.anchor = { ...next.anchor, essence: ch.anchor_essence };
+      }
+      next.intent = intent;
+      // drop this contradiction from the coherence report so the
+      // banner doesn't keep showing it
+      if (next.coherence) {
+        next.coherence = {
+          ...next.coherence,
+          contradictions: next.coherence.contradictions.filter(
+            (cc) => cc.description !== c.description,
+          ),
+        };
+      }
+      return next;
+    });
+    return { note: typeof data?.note === "string" ? data.note : "applied minimal fix" };
+  }
+
   // coherence audit. called right before complete() runs. blocking so
   // we can show contradictions before the user commits to compile.
   async function runCoherenceCheck(): Promise<void> {
@@ -466,6 +557,7 @@ function ForgeInner() {
               setSuggestedBranch, setSuggestedAnchors,
               advance, rewind, finishMirror, complete,
               sendCommunion, jumpToPhase, clearChat,
+              applyContradictionFix,
               soulMd,
             }, {
               suggestedBranch,
@@ -501,6 +593,7 @@ type Handlers = {
   sendCommunion: (text: string) => Promise<void>;
   jumpToPhase: (p: Phase) => void;
   clearChat: () => void;
+  applyContradictionFix: (c: { description: string; fields: string[]; suggestedFix: string }) => Promise<{ note: string } | null>;
   soulMd: string;
 };
 
@@ -629,6 +722,7 @@ function renderPhase(s: ForgeState, h: Handlers, extras?: RenderExtras) {
           onBack={h.rewind}
           onFinalize={h.complete}
           onClear={h.clearChat}
+          onFixContradiction={h.applyContradictionFix}
         />
       );
     default:

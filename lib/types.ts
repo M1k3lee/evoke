@@ -114,6 +114,25 @@ export type CoherenceReport = {
   checkedAt: number;
 } | null;
 
+// constrained patch shape the contradiction resolver can return.
+// groq picks fields here; the forge applies them deterministically.
+// kept small on purpose — every key is checked client-side before apply.
+export type ContradictionFix = {
+  changes: {
+    betrayal?: string;
+    mission?: string;
+    spice?: 1 | 2 | 3 | 4;
+    hardMustKeys_remove?: string[];
+    hardMustKeys_add?: string[];
+    customHardMusts_remove?: number[];
+    customHardMusts_add?: string[];
+    shadow?: Record<string, "A" | "B">;
+    anchor_exemplar?: string;
+    anchor_essence?: string;
+  };
+  note: string;
+};
+
 export type ForgeState = {
   phase: Phase;
   designation: string;
