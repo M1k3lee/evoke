@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Skull, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { listPublicSoulsByUsername } from "@/lib/db/souls";
+import { listPublicSoulsByUsername } from "@/lib/db/souls-server";
 import { getCurrentUser } from "@/lib/auth";
 import { PublicSoulGrid } from "@/components/PublicSoulGrid";
 

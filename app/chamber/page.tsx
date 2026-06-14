@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Skull, Sparkles, Library } from "lucide-react";
-import { listPublicSouls } from "@/lib/db/souls";
+import { listPublicSouls } from "@/lib/db/souls-server";
 import { getCurrentUser } from "@/lib/auth";
 import { PublicSoulGrid } from "@/components/PublicSoulGrid";
 import { LocalVaultPanel } from "@/components/LocalVaultPanel";
