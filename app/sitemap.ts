@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://evoke.ai";
+// strip any trailing slash so we don't end up with double slashes when
+// we concatenate. yes i did this the dumb way the first time. yes the
+// double slash made it onto the live sitemap. moving on.
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://evoke.ai").replace(/\/+$/, "");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
