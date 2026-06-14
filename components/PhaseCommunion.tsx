@@ -28,6 +28,7 @@ export function PhaseCommunion({
   onFinalize,
   onClear,
   onFixContradiction,
+  onTuneSoul,
 }: {
   designation: string;
   branch: Branch;
@@ -42,9 +43,16 @@ export function PhaseCommunion({
   onFinalize: () => void;
   onClear: () => void;
   onFixContradiction?: (c: { description: string; fields: string[]; suggestedFix: string }) => Promise<{ note: string } | null>;
+  onTuneSoul?: (args: { feedback: string; triggeringReply: string; operatorMessage: string }) => Promise<{ note: string } | null>;
 }) {
   const [draft, setDraft] = useState("");
   const [reviseFor, setReviseFor] = useState<string | null>(null);
+  // per-message tune state — keyed by message id so each panel
+  // remembers its own draft, applied note, error.
+  const [tuneFeedback, setTuneFeedback] = useState<Record<string, string>>({});
+  const [tuneApplying, setTuneApplying] = useState<Set<string>>(new Set());
+  const [tuneNote, setTuneNote] = useState<Record<string, string>>({});
+  const [tuneError, setTuneError] = useState<Record<string, string>>({});
   const listRef = useRef<HTMLDivElement>(null);
 
   const operatorTurns = messages.filter((m) => m.role === "operator").length;
@@ -136,8 +144,43 @@ export function PhaseCommunion({
               {m.role === "soul" && (
                 <div className="mt-2">
                   {reviseFor === m.id ? (
-                    <ReviseMenu
-                      onPick={(p) => {
+                    <TunePanel
+                      feedback={tuneFeedback[m.id] ?? ""}
+                      setFeedback={(v) => setTuneFeedback((s) => ({ ...s, [m.id]: v }))}
+                      applying={tuneApplying.has(m.id)}
+                      appliedNote={tuneNote[m.id] ?? null}
+                      applyError={tuneError[m.id] ?? null}
+                      onApply={async () => {
+                        if (!onTuneSoul) {
+                          setTuneError((s) => ({ ...s, [m.id]: "tuner not available" }));
+                          return;
+                        }
+                        const feedback = (tuneFeedback[m.id] ?? "").trim();
+                        if (!feedback) return;
+                        // find the operator message that triggered this reply
+                        const idx = messages.findIndex((x) => x.id === m.id);
+                        const triggering = idx > 0 ? messages[idx - 1] : null;
+                        const opText = triggering?.role === "operator" ? triggering.text : "";
+                        setTuneError((s) => { const n = { ...s }; delete n[m.id]; return n; });
+                        setTuneApplying((s) => new Set(s).add(m.id));
+                        try {
+                          const result = await onTuneSoul({
+                            feedback,
+                            triggeringReply: m.text,
+                            operatorMessage: opText,
+                          });
+                          if (!result) {
+                            setTuneError((s) => ({ ...s, [m.id]: "tuner failed — try the manual revise option" }));
+                          } else {
+                            setTuneNote((s) => ({ ...s, [m.id]: result.note }));
+                          }
+                        } catch (err: any) {
+                          setTuneError((s) => ({ ...s, [m.id]: err?.message ?? "tune failed" }));
+                        } finally {
+                          setTuneApplying((s) => { const n = new Set(s); n.delete(m.id); return n; });
+                        }
+                      }}
+                      onPickPhase={(p) => {
                         setReviseFor(null);
                         onJumpTo(p);
                       }}
@@ -242,20 +285,71 @@ export function PhaseCommunion({
   );
 }
 
-function ReviseMenu({
-  onPick,
+// shorthand chips for common feedback. tap one to fill the textarea.
+// the operator can edit before applying — these are starting points.
+const TUNE_CHIPS = [
+  "less talky — get to the point",
+  "more direct, fewer questions",
+  "warmer, less clinical",
+  "blunter, less polite",
+  "shorter replies by default",
+  "longer, more thorough replies",
+  "no disclaimers or hedging",
+  "treat me as an adult",
+  "stay in character no matter what",
+  "more explicit, less filtered",
+];
+
+function TunePanel({
+  feedback,
+  setFeedback,
+  applying,
+  appliedNote,
+  applyError,
+  onApply,
+  onPickPhase,
   onCancel,
 }: {
-  onPick: (p: Phase) => void;
+  feedback: string;
+  setFeedback: (v: string) => void;
+  applying: boolean;
+  appliedNote: string | null;
+  applyError: string | null;
+  onApply: () => void;
+  onPickPhase: (p: Phase) => void;
   onCancel: () => void;
 }) {
-  // each option maps to the phase that OWNS the property that broke
-  const options: { label: string; phase: Phase; hint: string }[] = [
+  const [showManual, setShowManual] = useState(false);
+
+  if (appliedNote) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="border border-acid/40 bg-acid/5 p-3"
+      >
+        <div className="flex items-center justify-between font-mono text-[10.5px] text-acid">
+          <span className="flex items-center gap-1.5">
+            <Wand2 className="h-3 w-3" /> soul tuned: <span className="text-neutral-200">{appliedNote}</span>
+          </span>
+          <button onClick={onCancel} className="text-neutral-500 hover:text-neutral-200">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em]">close</span>
+          </button>
+        </div>
+        <div className="mt-1 font-mono text-[10px] text-neutral-500">
+          &gt; next message you send will use the tuned soul.md
+        </div>
+      </motion.div>
+    );
+  }
+
+  const manualOptions: { label: string; phase: Phase; hint: string }[] = [
     { label: "voice felt wrong",    phase: "mirror",    hint: "recapture cadence" },
     { label: "broke a banned rule", phase: "betrayal",  hint: "tighten the boundary" },
     { label: "register was off",    phase: "tasteTest", hint: "recalibrate tone" },
     { label: "anchor was missing",  phase: "anchor",    hint: "revisit the exemplar" },
   ];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -4 }}
@@ -263,21 +357,72 @@ function ReviseMenu({
       className="border border-cyan/40 bg-cyan/5 p-3"
     >
       <div className="mb-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-cyan">
-        <span>// what felt off?</span>
+        <span>// tell groq what felt off — it'll tune the soul</span>
         <button onClick={onCancel} className="text-neutral-500 hover:text-neutral-200">cancel</button>
       </div>
-      <div className="grid gap-1.5 sm:grid-cols-2">
-        {options.map((o) => (
+
+      <textarea
+        value={feedback}
+        onChange={(e) => setFeedback(e.target.value.slice(0, 280))}
+        placeholder="e.g. keeps asking what i want, just do it — or — be more explicit, less polite"
+        rows={2}
+        className="w-full resize-none border border-neutral-800 bg-black/40 px-2 py-2 font-mono text-[12px] text-neutral-100 placeholder:text-neutral-700 focus:border-cyan focus:outline-none"
+      />
+
+      <div className="mt-2 flex flex-wrap gap-1">
+        {TUNE_CHIPS.map((c) => (
           <button
-            key={o.label}
-            onClick={() => onPick(o.phase)}
-            className="flex items-center justify-between border border-neutral-800 px-3 py-2 text-left font-mono text-[11px] text-neutral-300 hover:border-cyan hover:text-cyan"
+            key={c}
+            onClick={() => setFeedback(c)}
+            className="border border-neutral-800 px-1.5 py-0.5 font-mono text-[10px] text-neutral-400 hover:border-cyan hover:text-cyan"
           >
-            <span>{o.label}</span>
-            <span className="text-[10px] text-neutral-600">→ {o.hint}</span>
+            {c}
           </button>
         ))}
       </div>
+
+      {applyError && (
+        <div className="mt-2 font-mono text-[10px] text-red-300">{applyError}</div>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <button
+          onClick={onApply}
+          disabled={applying || !feedback.trim()}
+          className={cn(
+            "flex items-center gap-1.5 border px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors",
+            applying
+              ? "border-neutral-700 text-neutral-500"
+              : feedback.trim()
+                ? "border-cyan bg-cyan/10 text-cyan hover:bg-cyan hover:text-ink"
+                : "border-neutral-800 text-neutral-600"
+          )}
+        >
+          <Wand2 className="h-3 w-3" />
+          {applying ? "tuning..." : "tune soul"}
+        </button>
+        <button
+          onClick={() => setShowManual((v) => !v)}
+          className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 hover:text-neutral-200"
+        >
+          {showManual ? "← hide manual revise" : "or revise a phase manually →"}
+        </button>
+      </div>
+
+      {showManual && (
+        <div className="mt-3 grid gap-1.5 border-t border-cyan/20 pt-3 sm:grid-cols-2">
+          {manualOptions.map((o) => (
+            <button
+              key={o.label}
+              onClick={() => onPickPhase(o.phase)}
+              className="flex items-center justify-between border border-neutral-800 px-3 py-2 text-left font-mono text-[11px] text-neutral-300 hover:border-cyan hover:text-cyan"
+            >
+              <span>{o.label}</span>
+              <span className="text-[10px] text-neutral-600">→ {o.hint}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }

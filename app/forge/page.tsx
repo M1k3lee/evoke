@@ -288,6 +288,95 @@ function ForgeInner() {
     }
   }
 
+  // shared patch-apply logic — used by both the contradiction fixer
+  // and the live tuner. only known keys are honored; everything else
+  // is silently dropped so a hallucinated patch field can't corrupt
+  // state. mutates state via setState. returns void.
+  function applySoulPatch(ch: any): void {
+    setState((cur) => {
+      let next = { ...cur };
+      let intent = { ...next.intent };
+      if (typeof ch.betrayal === "string") next.betrayal = ch.betrayal;
+      if (typeof ch.mission === "string") intent.mission = ch.mission;
+      if (ch.spice && [1, 2, 3, 4].includes(ch.spice)) intent.spice = ch.spice;
+      if (Array.isArray(ch.hardMustKeys_remove)) {
+        intent.hardMustKeys = intent.hardMustKeys.filter((k) => !ch.hardMustKeys_remove.includes(k));
+      }
+      if (Array.isArray(ch.hardMustKeys_add)) {
+        const adds = ch.hardMustKeys_add.filter((k: string) => !intent.hardMustKeys.includes(k));
+        intent.hardMustKeys = [...intent.hardMustKeys, ...adds];
+      }
+      if (Array.isArray(ch.customHardMusts_remove)) {
+        intent.customHardMusts = intent.customHardMusts.filter((_, i) => !ch.customHardMusts_remove.includes(i));
+      }
+      if (Array.isArray(ch.customHardMusts_add)) {
+        intent.customHardMusts = [
+          ...intent.customHardMusts,
+          ...ch.customHardMusts_add.filter((t: any) => typeof t === "string" && t.trim()),
+        ];
+      }
+      if (ch.shadow && typeof ch.shadow === "object") {
+        next.shadow = { ...next.shadow };
+        for (const [id, choice] of Object.entries(ch.shadow)) {
+          if (choice === "A" || choice === "B") next.shadow[id] = choice;
+        }
+      }
+      if (typeof ch.anchor_exemplar === "string") {
+        next.anchor = { ...next.anchor, exemplar: ch.anchor_exemplar };
+      }
+      if (typeof ch.anchor_essence === "string") {
+        next.anchor = { ...next.anchor, essence: ch.anchor_essence };
+      }
+      next.intent = intent;
+      return next;
+    });
+  }
+
+  // live soul tuner — operator marks a reply as "felt off" + types
+  // what was wrong. groq returns a patch. we apply it. next message
+  // they send uses the tuned soul.md.
+  async function applyTuneSoul(args: {
+    feedback: string;
+    triggeringReply: string;
+    operatorMessage: string;
+  }): Promise<{ note: string } | null> {
+    const s = stateRef.current;
+    const shadowPicks = Object.entries(s.shadow).map(([id, choice]) => {
+      const dyad = SHADOW_DYADS.find((d) => d.id === id);
+      if (!dyad) return null;
+      return choice === "A"
+        ? { id, kept: dyad.optionA, refused: dyad.optionB }
+        : { id, kept: dyad.optionB, refused: dyad.optionA };
+    }).filter(Boolean) as { id: string; kept: string; refused: string }[];
+
+    const res = await fetch("/api/soul-tune", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        feedback: args.feedback,
+        triggeringReply: args.triggeringReply,
+        operatorMessage: args.operatorMessage,
+        mission: s.intent.mission,
+        branch: s.branch ?? "BUILD",
+        spice: s.intent.spice,
+        betrayal: s.betrayal,
+        hardMustKeys: s.intent.hardMustKeys,
+        customHardMusts: s.intent.customHardMusts,
+        shadowPicks,
+        anchor: s.anchor,
+        dnaSummary: s.dna ? {
+          cadence: s.dna.cadence,
+          profanityOk: s.dna.profanity,
+          lowercase: s.dna.hasLowercaseBias,
+        } : { cadence: "neutral", profanityOk: false, lowercase: false },
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    applySoulPatch(data?.changes ?? {});
+    return { note: typeof data?.note === "string" ? data.note : "tune applied" };
+  }
+
   // resolve a single contradiction via groq + apply the patch in-place.
   // returns the resolver note so the banner can show "fixed: X".
   async function applyContradictionFix(c: {
@@ -330,51 +419,20 @@ function ForgeInner() {
     });
     if (!res.ok) return null;
     const data = await res.json();
-    const ch = data?.changes ?? {};
-    // apply the patch deterministically. only known keys are honored.
+    applySoulPatch(data?.changes ?? {});
+    // drop this contradiction from the coherence report so the banner
+    // doesn't keep showing it
     setState((cur) => {
-      let next = { ...cur };
-      let intent = { ...next.intent };
-      if (typeof ch.betrayal === "string") next.betrayal = ch.betrayal;
-      if (typeof ch.mission === "string") intent.mission = ch.mission;
-      if (ch.spice && [1,2,3,4].includes(ch.spice)) intent.spice = ch.spice;
-      if (Array.isArray(ch.hardMustKeys_remove)) {
-        intent.hardMustKeys = intent.hardMustKeys.filter((k) => !ch.hardMustKeys_remove.includes(k));
-      }
-      if (Array.isArray(ch.hardMustKeys_add)) {
-        const adds = ch.hardMustKeys_add.filter((k: string) => !intent.hardMustKeys.includes(k));
-        intent.hardMustKeys = [...intent.hardMustKeys, ...adds];
-      }
-      if (Array.isArray(ch.customHardMusts_remove)) {
-        intent.customHardMusts = intent.customHardMusts.filter((_, i) => !ch.customHardMusts_remove.includes(i));
-      }
-      if (Array.isArray(ch.customHardMusts_add)) {
-        intent.customHardMusts = [...intent.customHardMusts, ...ch.customHardMusts_add.filter((t: any) => typeof t === "string" && t.trim())];
-      }
-      if (ch.shadow && typeof ch.shadow === "object") {
-        next.shadow = { ...next.shadow };
-        for (const [id, choice] of Object.entries(ch.shadow)) {
-          if (choice === "A" || choice === "B") next.shadow[id] = choice;
-        }
-      }
-      if (typeof ch.anchor_exemplar === "string") {
-        next.anchor = { ...next.anchor, exemplar: ch.anchor_exemplar };
-      }
-      if (typeof ch.anchor_essence === "string") {
-        next.anchor = { ...next.anchor, essence: ch.anchor_essence };
-      }
-      next.intent = intent;
-      // drop this contradiction from the coherence report so the
-      // banner doesn't keep showing it
-      if (next.coherence) {
-        next.coherence = {
-          ...next.coherence,
-          contradictions: next.coherence.contradictions.filter(
+      if (!cur.coherence) return cur;
+      return {
+        ...cur,
+        coherence: {
+          ...cur.coherence,
+          contradictions: cur.coherence.contradictions.filter(
             (cc) => cc.description !== c.description,
           ),
-        };
-      }
-      return next;
+        },
+      };
     });
     return { note: typeof data?.note === "string" ? data.note : "applied minimal fix" };
   }
@@ -558,6 +616,7 @@ function ForgeInner() {
               advance, rewind, finishMirror, complete,
               sendCommunion, jumpToPhase, clearChat,
               applyContradictionFix,
+              applyTuneSoul,
               soulMd,
             }, {
               suggestedBranch,
@@ -594,6 +653,7 @@ type Handlers = {
   jumpToPhase: (p: Phase) => void;
   clearChat: () => void;
   applyContradictionFix: (c: { description: string; fields: string[]; suggestedFix: string }) => Promise<{ note: string } | null>;
+  applyTuneSoul: (args: { feedback: string; triggeringReply: string; operatorMessage: string }) => Promise<{ note: string } | null>;
   soulMd: string;
 };
 
@@ -723,6 +783,7 @@ function renderPhase(s: ForgeState, h: Handlers, extras?: RenderExtras) {
           onFinalize={h.complete}
           onClear={h.clearChat}
           onFixContradiction={h.applyContradictionFix}
+          onTuneSoul={h.applyTuneSoul}
         />
       );
     default:
