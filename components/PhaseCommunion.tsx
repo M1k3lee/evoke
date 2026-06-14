@@ -152,7 +152,7 @@ export function PhaseCommunion({
                       applyError={tuneError[m.id] ?? null}
                       onApply={async () => {
                         if (!onTuneSoul) {
-                          setTuneError((s) => ({ ...s, [m.id]: "tuner not available" }));
+                          setTuneError((s) => ({ ...s, [m.id]: "DAIMON not available" }));
                           return;
                         }
                         const feedback = (tuneFeedback[m.id] ?? "").trim();
@@ -170,7 +170,7 @@ export function PhaseCommunion({
                             operatorMessage: opText,
                           });
                           if (!result) {
-                            setTuneError((s) => ({ ...s, [m.id]: "tuner failed — try the manual revise option" }));
+                            setTuneError((s) => ({ ...s, [m.id]: "DAIMON couldn't find a clean tune — try the manual revise option" }));
                           } else {
                             setTuneNote((s) => ({ ...s, [m.id]: result.note }));
                           }
@@ -357,7 +357,7 @@ function TunePanel({
       className="border border-cyan/40 bg-cyan/5 p-3"
     >
       <div className="mb-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.25em] text-cyan">
-        <span>// tell groq what felt off — it'll tune the soul</span>
+        <span>// tell DAIMON what felt off — it'll tune the soul</span>
         <button onClick={onCancel} className="text-neutral-500 hover:text-neutral-200">cancel</button>
       </div>
 

@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const result = await synthesizeIntent(mission);
   if (!result) {
     return NextResponse.json(
-      { error: "synthesis failed. groq may be throttled — retry, or fill the brief manually." },
+      { error: "DAIMON is throttled — retry, or fill the brief manually." },
       { status: 502 },
     );
   }

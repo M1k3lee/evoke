@@ -178,7 +178,7 @@ export function CoherenceBanner({
             })}
           </div>
           <div className="mt-3 font-mono text-[10px] text-neutral-500">
-            &gt; fix patches in seconds via groq. ignore drops just this finding. you can always revise manually.
+            &gt; fix patches in seconds via DAIMON. ignore drops just this finding. you can always revise manually.
           </div>
         </div>
       )}

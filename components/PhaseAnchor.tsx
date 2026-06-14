@@ -69,7 +69,7 @@ export function PhaseAnchor({
         {suggestions && suggestions.length > 0 && (
           <div className="mt-2">
             <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-cyan/80">
-              // groq suggestions based on your intent
+              // DAIMON's suggestions based on your intent
             </div>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {suggestions.slice(0, 4).map((s) => (

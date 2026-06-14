@@ -150,7 +150,7 @@ export function PhaseIntent({
             )}
           >
             <Sparkles className="h-3 w-3" />
-            {synthPending ? "sharpening..." : "sharpen with groq"}
+            {synthPending ? "DAIMON is reading..." : "ask DAIMON to sharpen"}
           </button>
         </div>
         <textarea

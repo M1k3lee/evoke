@@ -57,7 +57,7 @@ export function PhaseTasteTest({
         <div className="mt-2 text-neutral-200">{setup}</div>
         {personalized && (
           <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-cyan/80">
-            // scenario personalized by groq for your mission
+            // scenario personalized by DAIMON for your mission
           </div>
         )}
       </motion.div>
