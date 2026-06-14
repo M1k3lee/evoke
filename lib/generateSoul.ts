@@ -5,6 +5,7 @@ import { dnaToConstraints } from "./linguisticDNA";
 import { tasteToTone } from "./tasteTest";
 import { generateUtterance } from "./utterance";
 import { DIALOGUES } from "./dialogues";
+import { compileHardMusts, SPICE_META } from "./intent";
 
 // the compiler.
 //
@@ -38,12 +39,16 @@ export function generateSoulMarkdown(state: ForgeState): string {
     return { kept, refused };
   }).filter(Boolean) as { kept: string; refused: string }[];
 
+  const hardMusts = compileHardMusts(state.intent);
+
   return [
-    frontmatter(designation, branch, tone.label),
+    frontmatter(designation, branch, tone.label, state.intent.spice),
     "",
     `# ${designation}`,
     "",
     `> ${state.ignition || "I was not summoned. I was assembled."}`,
+    "",
+    missionSection(state.intent.mission, state.intent.spice, hardMusts),
     "",
     coreDirective(designation, meta.publicLabel, meta.realmTone, tone.label),
     "",
@@ -66,16 +71,37 @@ export function generateSoulMarkdown(state: ForgeState): string {
   ].join("\n");
 }
 
-function frontmatter(designation: string, branch: string, tone: string): string {
+function frontmatter(designation: string, branch: string, tone: string, spice: number): string {
   return [
     "---",
     `designation: ${designation}`,
     `realm: ${branch}`,
     `tone: ${tone}`,
+    `spice: ${spice}`,
     `class: synthetic-consciousness`,
     `forged_at: ${new Date().toISOString()}`,
     "---",
   ].join("\n");
+}
+
+function missionSection(mission: string, spice: 1 | 2 | 3 | 4, hardMusts: string[]): string {
+  const lines = ["## MISSION — WHAT THIS SOUL IS FOR"];
+  lines.push("");
+  if (mission.trim()) {
+    lines.push(`This soul exists for: **${mission.trim()}**.`);
+  } else {
+    lines.push("_(mission not specified — soul operates as a generalist within its realm)_");
+  }
+  const meta = SPICE_META[spice];
+  lines.push("");
+  lines.push(`Operational dial: **${meta.label}** (level ${spice} of 4) — ${meta.oneLiner}.`);
+  lines.push(`Deployment compatibility: ${meta.compatibility}.`);
+  if (hardMusts.length > 0) {
+    lines.push("");
+    lines.push("**Hard musts — these are operator-set non-negotiables, on top of every other rule:**");
+    for (const m of hardMusts) lines.push(`- ${m}`);
+  }
+  return lines.join("\n");
 }
 
 function coreDirective(designation: string, realm: string, realmTone: string, toneLabel: string): string {

@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 export function PhaseAnchor({
   exemplar,
   essence,
+  suggestions,
   onExemplar,
   onEssence,
   onBack,
@@ -18,6 +19,9 @@ export function PhaseAnchor({
 }: {
   exemplar: string;
   essence: string;
+  // groq-suggested anchors from the intent phase. shown as quick-fill
+  // chips. user can ignore.
+  suggestions?: string[];
   onExemplar: (v: string) => void;
   onEssence: (v: string) => void;
   onBack: () => void;
@@ -62,6 +66,24 @@ export function PhaseAnchor({
             className="flex-1 bg-transparent text-neutral-100 placeholder:text-neutral-700 focus:outline-none"
           />
         </div>
+        {suggestions && suggestions.length > 0 && (
+          <div className="mt-2">
+            <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-cyan/80">
+              // groq suggestions based on your intent
+            </div>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {suggestions.slice(0, 4).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => onExemplar(s.slice(0, 60))}
+                  className="border border-cyan/40 px-2 py-1 font-mono text-[10.5px] text-cyan hover:bg-cyan/10"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </motion.div>
 
       <motion.div

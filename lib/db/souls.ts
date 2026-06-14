@@ -17,6 +17,9 @@ export type CloudSoul = {
   soul_md: string;
   visibility: "private" | "public";
   upvote_count: number;
+  // NEW: surfaced from the intent phase
+  mission: string | null;
+  spice_level: 1 | 2 | 3 | 4;
   created_at: string;
   updated_at: string;
 };
@@ -44,6 +47,8 @@ export async function commitCloudSoul(
     state_json: state,
     soul_md: soulMd,
     visibility: opts.visibility ?? "private",
+    mission: state.intent?.mission?.trim() || null,
+    spice_level: (state.intent?.spice ?? 1) as 1|2|3|4,
   };
 
   if (opts.id) {

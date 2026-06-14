@@ -16,6 +16,9 @@ export type Branch = "BUILD" | "BOND" | "BYPASS" | "BREACH";
 
 export type Phase =
   | "designation"
+  | "intent"      // NEW: mission + spice + hard musts. lives between
+                  // designation and branch so the branch question can
+                  // pre-suggest based on intent.
   | "branch"
   | "ignition"
   | "mirror"
@@ -29,6 +32,7 @@ export type Phase =
 
 export const PHASE_ORDER: Phase[] = [
   "designation",
+  "intent",
   "branch",
   "ignition",
   "mirror",
@@ -89,9 +93,31 @@ export type CommunionState = {
   error: string | null;
 };
 
+// personalized taste-test scenario, populated by groq if available.
+// when null we fall back to the static branch-specific scenarios.
+export type PersonalizedTaste = {
+  scenario: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+} | null;
+
+// coherence check result. groq audits the assembled soul for
+// contradictions before the final compile. null until run.
+export type CoherenceReport = {
+  allClear: boolean;
+  contradictions: {
+    description: string;
+    fields: string[];        // phase keys touched by the contradiction
+    suggestedFix: string;
+  }[];
+  checkedAt: number;
+} | null;
+
 export type ForgeState = {
   phase: Phase;
   designation: string;
+  intent: import("./intent").Intent;  // NEW: mission, spice, hard musts
   branch: Branch | null;
   ignition: string;                // phase 0 — captured opening sentence
   mirror: string;                  // phase 1 — prose sample
@@ -100,13 +126,18 @@ export type ForgeState = {
   anchor: { exemplar: string; essence: string }; // phase 3
   betrayal: string;                // phase 4 — verbatim banned behavior
   tasteTest: TasteOption | null;   // phase 5
+  personalizedTaste: PersonalizedTaste; // NEW: groq-generated scenario
   utterance: UtteranceTuning;      // phase 6
   communion: CommunionState;       // phase 7 — live chat with the freshly compiled soul
+  coherence: CoherenceReport;      // NEW: pre-compile audit
 };
+
+import { EMPTY_INTENT } from "./intent";
 
 export const INITIAL_STATE: ForgeState = {
   phase: "designation",
   designation: "",
+  intent: EMPTY_INTENT,
   branch: null,
   ignition: "",
   mirror: "",
@@ -115,8 +146,10 @@ export const INITIAL_STATE: ForgeState = {
   anchor: { exemplar: "", essence: "" },
   betrayal: "",
   tasteTest: null,
+  personalizedTaste: null,
   utterance: { intensity: 55, formality: 35, warmth: 40 },
   communion: { messages: [], pending: false, error: null },
+  coherence: null,
 };
 
 // session-turn cap for free communion. revisit when accounts ship.

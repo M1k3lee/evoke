@@ -12,17 +12,24 @@ import type { Branch, TasteOption } from "@/lib/types";
 export function PhaseTasteTest({
   branch,
   value,
+  personalized,
   onChange,
   onBack,
   onNext,
 }: {
   branch: Branch;
   value: TasteOption | null;
+  // when groq personalized the scenario based on intent + DNA, use it.
+  // null = fall back to the static branch-specific scenario.
+  personalized?: { scenario: string; optionA: string; optionB: string; optionC: string } | null;
   onChange: (v: TasteOption) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
-  const scenario = TASTE_SCENARIOS[branch];
+  // normalize to a single shape — personalized uses `scenario`, the
+  // static map uses `setup`. both shapes carry the same A/B/C options.
+  const setup = personalized?.scenario ?? TASTE_SCENARIOS[branch].setup;
+  const scenario = personalized ?? TASTE_SCENARIOS[branch];
 
   return (
     <div className="relative flex min-h-[480px] flex-col border border-neutral-800 bg-neutral-950/40 p-5 sm:min-h-[600px] sm:p-8">
@@ -47,7 +54,12 @@ export function PhaseTasteTest({
         className="mt-8 border border-neutral-900 bg-black/40 p-4 font-mono text-sm leading-relaxed text-neutral-300"
       >
         <div className="text-[10px] uppercase tracking-[0.25em] text-neutral-500">// scenario</div>
-        <div className="mt-2 text-neutral-200">{scenario.setup}</div>
+        <div className="mt-2 text-neutral-200">{setup}</div>
+        {personalized && (
+          <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.2em] text-cyan/80">
+            // scenario personalized by groq for your mission
+          </div>
+        )}
       </motion.div>
 
       <div className="mt-6 grid gap-3">

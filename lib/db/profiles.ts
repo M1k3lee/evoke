@@ -52,19 +52,34 @@ export async function createProfile(input: {
 export async function updateProfile(input: {
   displayName?: string | null;
   bio?: string | null;
+  matureContentEnabled?: boolean;
 }): Promise<{ ok: true } | { ok: false; reason: string }> {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, reason: "not signed in" };
 
+  const update: Record<string, unknown> = {};
+  if (input.displayName !== undefined) update.display_name = input.displayName;
+  if (input.bio !== undefined) update.bio = input.bio;
+  if (input.matureContentEnabled !== undefined) update.mature_content_enabled = input.matureContentEnabled;
+
   const { error } = await supabase
     .from("profiles")
-    .update({
-      display_name: input.displayName,
-      bio: input.bio,
-    })
+    .update(update)
     .eq("id", user.id);
 
   if (error) return { ok: false, reason: error.message };
   return { ok: true };
+}
+
+export async function getMyMatureOptIn(): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from("profiles")
+    .select("mature_content_enabled")
+    .eq("id", user.id)
+    .maybeSingle();
+  return !!data?.mature_content_enabled;
 }

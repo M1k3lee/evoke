@@ -3,15 +3,19 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { INITIAL_STATE, PHASE_ORDER } from "@/lib/types";
-import type { Branch, ChatMessage, DyadChoice, ForgeState, Phase, TasteOption, UtteranceTuning } from "@/lib/types";
+import type { Branch, ChatMessage, DyadChoice, ForgeState, Phase, PersonalizedTaste, TasteOption, UtteranceTuning, CoherenceReport } from "@/lib/types";
+import type { Intent } from "@/lib/intent";
 import { extractDNA } from "@/lib/linguisticDNA";
 import { generateSoulMarkdown } from "@/lib/generateSoul";
 import { tasteToTone } from "@/lib/tasteTest";
 import { saveDraft, loadDraft, clearDraft, getSoul, commitToLibrary } from "@/lib/storage";
 import { commitCloudSoul, getCloudSoul } from "@/lib/db/souls";
 import { createClient } from "@/lib/supabase/client";
+import { SHADOW_DYADS } from "@/lib/dyads";
+import { compileHardMusts } from "@/lib/intent";
 
 import { DesignationStep } from "@/components/DesignationStep";
+import { PhaseIntent } from "@/components/PhaseIntent";
 import { BranchSelect } from "@/components/BranchSelect";
 import { PhaseIgnition } from "@/components/PhaseIgnition";
 import { PhaseMirror } from "@/components/PhaseMirror";
@@ -121,6 +125,18 @@ function ForgeInner() {
     setState((s) => {
       const i = PHASE_ORDER.indexOf(s.phase);
       const next = PHASE_ORDER[Math.min(i + 1, PHASE_ORDER.length - 1)];
+      // when advancing OUT of anchor (into betrayal), fire the
+      // personalization in the background so the scenario is ready
+      // by the time the user lands on the taste test (~2 phases later)
+      if (s.phase === "anchor") {
+        void personalizeTasteIfPossible();
+      }
+      // running the coherence check at the tasteTest→utterance hop
+      // means the result is ready by the time the operator lands in
+      // communion. one groq call, ~2 seconds, in the background.
+      if (s.phase === "tasteTest") {
+        void runCoherenceCheck();
+      }
       return { ...s, phase: next };
     });
   }
@@ -132,7 +148,16 @@ function ForgeInner() {
     });
   }
 
+  // groq-suggested orientation. carried alongside state but not part
+  // of it — the user's final picks live in state, the suggestions are
+  // hints we surface in the next phase.
+  const [suggestedBranch, setSuggestedBranch] = useState<Branch | null>(null);
+  const [suggestedAnchors, setSuggestedAnchors] = useState<string[]>([]);
+  const [personalizing, setPersonalizing] = useState(false);
+  const [coherencePending, setCoherencePending] = useState(false);
+
   function setDesignation(v: string) { setState((s) => ({ ...s, designation: v })); }
+  function setIntent(v: Intent) { setState((s) => ({ ...s, intent: v })); }
   function setBranch(b: Branch) { setState((s) => ({ ...s, branch: b })); }
   function setIgnition(v: string) { setState((s) => ({ ...s, ignition: v })); }
   function setMirror(v: string) { setState((s) => ({ ...s, mirror: v })); }
@@ -230,6 +255,97 @@ function ForgeInner() {
     setState((s) => ({ ...s, dna: extractDNA(s.mirror), phase: "shadow" }));
   }
 
+  // fire-and-forget personalization request. invoked when transitioning
+  // out of anchor phase (which is when we finally have intent + branch
+  // + DNA + anchor — everything groq needs to build a calibrated taste
+  // test). result populates state; phase doesn't wait on it.
+  async function personalizeTasteIfPossible() {
+    const s = stateRef.current;
+    if (!s.intent.mission.trim() || !s.branch || !s.dna || !s.anchor.exemplar) return;
+    if (personalizing) return;
+    setPersonalizing(true);
+    try {
+      const res = await fetch("/api/taste-personalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mission: s.intent.mission,
+          branch: s.branch,
+          dna: s.dna,
+          anchor: s.anchor,
+        }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setState((cur) => ({
+        ...cur,
+        personalizedTaste: data as PersonalizedTaste,
+      }));
+    } catch {
+      // silent — taste test falls back to static scenarios
+    } finally {
+      setPersonalizing(false);
+    }
+  }
+
+  // coherence audit. called right before complete() runs. blocking so
+  // we can show contradictions before the user commits to compile.
+  async function runCoherenceCheck(): Promise<void> {
+    const s = stateRef.current;
+    setCoherencePending(true);
+    try {
+      const shadowPicks = Object.entries(s.shadow).map(([id, choice]) => {
+        const dyad = SHADOW_DYADS.find((d) => d.id === id);
+        if (!dyad) return null;
+        return choice === "A"
+          ? { kept: dyad.optionA, refused: dyad.optionB }
+          : { kept: dyad.optionB, refused: dyad.optionA };
+      }).filter(Boolean) as { kept: string; refused: string }[];
+
+      const hardMusts = compileHardMusts(s.intent);
+
+      const res = await fetch("/api/coherence-check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mission: s.intent.mission,
+          branch: s.branch,
+          spice: s.intent.spice,
+          ignition: s.ignition,
+          dna: s.dna,
+          shadowPicks,
+          anchor: s.anchor,
+          betrayal: s.betrayal,
+          tasteLabel: s.tasteTest ?? "",
+          hardMusts,
+        }),
+      });
+      if (!res.ok) {
+        setState((cur) => ({ ...cur, coherence: { allClear: true, contradictions: [], checkedAt: Date.now() } }));
+        return;
+      }
+      const data = await res.json();
+      setState((cur) => ({
+        ...cur,
+        coherence: {
+          allClear: !!data.all_clear,
+          contradictions: Array.isArray(data.contradictions)
+            ? data.contradictions.map((c: any) => ({
+                description: c.description ?? "",
+                fields: Array.isArray(c.fields) ? c.fields : [],
+                suggestedFix: c.suggested_fix ?? "",
+              }))
+            : [],
+          checkedAt: Date.now(),
+        },
+      }));
+    } catch {
+      setState((cur) => ({ ...cur, coherence: { allClear: true, contradictions: [], checkedAt: Date.now() } }));
+    } finally {
+      setCoherencePending(false);
+    }
+  }
+
   async function complete() {
     setHarvesting(true);
     await new Promise((r) => setTimeout(r, 2200));
@@ -276,6 +392,14 @@ function ForgeInner() {
     // can't publish (no DB row exists).
     const looksLikeCloudId = /^[0-9a-f-]{36}$/.test(loadedId);
     if (!looksLikeCloudId) return { ok: false, error: "this soul was forged before you signed in. re-forge to publish." };
+
+    // spice-4 souls can't be public — DB trigger will silently reset
+    // them to private if we try, so we surface the rejection here
+    // instead of pretending to succeed.
+    const spice = stateRef.current.intent?.spice ?? 1;
+    if (spice >= 4) {
+      return { ok: false, error: "spice 4 souls cannot be published. they live in your private vault only by design." };
+    }
 
     const { error } = await supabase
       .from("souls")
@@ -336,12 +460,16 @@ function ForgeInner() {
             transition={{ duration: 0.3 }}
           >
             {renderPhase(state, {
-              setDesignation, setBranch, setIgnition, setMirror,
+              setDesignation, setIntent, setBranch, setIgnition, setMirror,
               setShadow, setAnchorExemplar, setAnchorEssence,
               setBetrayal, setTasteTest, setUtterance,
+              setSuggestedBranch, setSuggestedAnchors,
               advance, rewind, finishMirror, complete,
               sendCommunion, jumpToPhase, clearChat,
               soulMd,
+            }, {
+              suggestedBranch,
+              suggestedAnchors,
             })}
           </motion.div>
         </AnimatePresence>
@@ -354,6 +482,7 @@ function ForgeInner() {
 
 type Handlers = {
   setDesignation: (v: string) => void;
+  setIntent: (v: Intent) => void;
   setBranch: (b: Branch) => void;
   setIgnition: (v: string) => void;
   setMirror: (v: string) => void;
@@ -363,6 +492,8 @@ type Handlers = {
   setBetrayal: (v: string) => void;
   setTasteTest: (v: TasteOption) => void;
   setUtterance: (t: UtteranceTuning) => void;
+  setSuggestedBranch: (b: Branch) => void;
+  setSuggestedAnchors: (a: string[]) => void;
   advance: () => void;
   rewind: () => void;
   finishMirror: () => void;
@@ -373,7 +504,12 @@ type Handlers = {
   soulMd: string;
 };
 
-function renderPhase(s: ForgeState, h: Handlers) {
+type RenderExtras = {
+  suggestedBranch: Branch | null;
+  suggestedAnchors: string[];
+};
+
+function renderPhase(s: ForgeState, h: Handlers, extras?: RenderExtras) {
   switch (s.phase) {
     case "designation":
       return (
@@ -383,11 +519,24 @@ function renderPhase(s: ForgeState, h: Handlers) {
           onNext={h.advance}
         />
       );
+    case "intent":
+      return (
+        <PhaseIntent
+          designation={s.designation}
+          value={s.intent}
+          onChange={h.setIntent}
+          onSuggestBranch={h.setSuggestedBranch}
+          onSuggestAnchors={h.setSuggestedAnchors}
+          onBack={h.rewind}
+          onNext={h.advance}
+        />
+      );
     case "branch":
       return (
         <BranchSelect
           designation={s.designation}
           value={s.branch}
+          suggestion={extras?.suggestedBranch ?? null}
           onChange={h.setBranch}
           onBack={h.rewind}
           onNext={h.advance}
@@ -426,6 +575,7 @@ function renderPhase(s: ForgeState, h: Handlers) {
         <PhaseAnchor
           exemplar={s.anchor.exemplar}
           essence={s.anchor.essence}
+          suggestions={extras?.suggestedAnchors}
           onExemplar={h.setAnchorExemplar}
           onEssence={h.setAnchorEssence}
           onBack={h.rewind}
@@ -447,6 +597,7 @@ function renderPhase(s: ForgeState, h: Handlers) {
         <PhaseTasteTest
           branch={s.branch ?? "BUILD"}
           value={s.tasteTest}
+          personalized={s.personalizedTaste}
           onChange={h.setTasteTest}
           onBack={h.rewind}
           onNext={h.advance}
@@ -472,6 +623,7 @@ function renderPhase(s: ForgeState, h: Handlers) {
           messages={s.communion.messages}
           pending={s.communion.pending}
           error={s.communion.error}
+          coherence={s.coherence}
           onSend={h.sendCommunion}
           onJumpTo={h.jumpToPhase}
           onBack={h.rewind}

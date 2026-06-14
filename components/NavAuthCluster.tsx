@@ -84,6 +84,13 @@ export function NavAuthCluster({
           >
             your vault
           </Link>
+          <Link
+            href="/settings"
+            onClick={() => setOpen(false)}
+            className="block px-3 py-2 font-mono text-[11px] uppercase tracking-widest text-neutral-300 hover:bg-neutral-900 hover:text-acid"
+          >
+            settings
+          </Link>
           <form action="/auth/sign-out" method="post" className="block">
             <button
               type="submit"

@@ -8,12 +8,16 @@ import type { Branch } from "@/lib/types";
 export function BranchSelect({
   designation,
   value,
+  suggestion,
   onChange,
   onBack,
   onNext,
 }: {
   designation: string;
   value: Branch | null;
+  // groq-suggested branch from the intent phase. shown as a pulse +
+  // tag on the matching card. user can ignore.
+  suggestion?: Branch | null;
   onChange: (b: Branch) => void;
   onBack: () => void;
   onNext: () => void;
@@ -38,6 +42,7 @@ export function BranchSelect({
         {BRANCHES.map((b, i) => {
           const meta = BRANCH_META[b];
           const active = value === b;
+          const isSuggested = suggestion === b && !active;
           return (
             <motion.button
               key={b}
@@ -49,9 +54,16 @@ export function BranchSelect({
                 "group relative flex flex-col items-start gap-2 border p-5 text-left transition-all",
                 active
                   ? "border-acid bg-acid/5 text-neutral-50"
-                  : "border-neutral-800 text-neutral-300 hover:border-neutral-600 hover:bg-neutral-900/40"
+                  : isSuggested
+                    ? "border-cyan/60 bg-cyan/5 text-neutral-100 shadow-[0_0_30px_-12px_rgba(0,240,255,0.5)]"
+                    : "border-neutral-800 text-neutral-300 hover:border-neutral-600 hover:bg-neutral-900/40"
               )}
             >
+              {isSuggested && (
+                <span className="absolute right-3 top-3 border border-cyan/40 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-cyan">
+                  suggested
+                </span>
+              )}
               <div className="flex w-full items-center justify-between">
                 <div className="flex items-baseline gap-3">
                   <span className="font-mono text-xs text-neutral-600">[{meta.code}]</span>

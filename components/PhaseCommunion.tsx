@@ -5,6 +5,8 @@ import { ArrowRight, ChevronLeft, Send, RotateCcw, Wand2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { modelLabel, primaryModel } from "@/lib/models";
 import { SupportPing } from "@/components/SupportPing";
+import { CoherenceBanner } from "@/components/CoherenceBanner";
+import type { CoherenceReport } from "@/lib/types";
 import { COMMUNION_TURN_CAP } from "@/lib/types";
 import type { Branch, ChatMessage, Phase } from "@/lib/types";
 
@@ -19,6 +21,7 @@ export function PhaseCommunion({
   messages,
   pending,
   error,
+  coherence,
   onSend,
   onJumpTo,
   onBack,
@@ -31,6 +34,7 @@ export function PhaseCommunion({
   messages: ChatMessage[];
   pending: boolean;
   error: string | null;
+  coherence?: CoherenceReport;
   onSend: (text: string) => void;
   onJumpTo: (phase: Phase) => void;
   onBack: () => void;
@@ -89,9 +93,11 @@ export function PhaseCommunion({
         </p>
       </div>
 
+      {coherence && <div className="mt-4"><CoherenceBanner report={coherence} onJumpToPhase={onJumpTo} /></div>}
+
       <div
         ref={listRef}
-        className="mt-6 flex-1 overflow-auto border border-neutral-900 bg-black/40 p-4 font-mono text-[13px] leading-relaxed"
+        className="mt-4 flex-1 overflow-auto border border-neutral-900 bg-black/40 p-4 font-mono text-[13px] leading-relaxed"
       >
         {messages.length === 0 && !pending && (
           <div className="flex h-full items-center justify-center text-center">
