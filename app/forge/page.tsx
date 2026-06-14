@@ -320,13 +320,13 @@ function ForgeInner() {
   }
 
   return (
-    <div className="relative mx-auto max-w-7xl px-6 py-8">
+    <div className="relative mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-8">
       {harvesting && <SummoningLoader variant="overlay" intervalMs={700} />}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <StepIndicator current={phaseIndex + 1} total={totalPhases} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-3 sm:gap-6 lg:grid-cols-2">
         <AnimatePresence mode="wait">
           <motion.div
             key={state.phase}

@@ -66,11 +66,14 @@ export function PhaseCommunion({
   const modelName = modelLabel(primaryModel(branch));
 
   return (
-    <div className="relative flex min-h-[600px] flex-col border border-neutral-800 bg-neutral-950/40 p-8">
-      <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.25em] text-neutral-500">
+    <div className="relative flex min-h-[480px] flex-col border border-neutral-800 bg-neutral-950/40 p-5 sm:min-h-[600px] sm:p-8">
+      <div className="flex flex-col items-start gap-1 text-[10px] uppercase tracking-[0.25em] text-neutral-500 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
         <span>phase_07 // communion</span>
         <span className="flex items-center gap-3">
-          <span className="text-neutral-600">model: <span className="text-cyan">{modelName}</span></span>
+          {/* hide model label on mobile to save space — turns counter is the priority */}
+          <span className="hidden text-neutral-600 sm:inline">
+            model: <span className="text-cyan">{modelName}</span>
+          </span>
           <span className={cn("text-acid", remaining <= 2 && "text-red-400")}>
             turns: {remaining}/{COMMUNION_TURN_CAP}
           </span>
@@ -78,7 +81,7 @@ export function PhaseCommunion({
       </div>
 
       <div className="mt-6">
-        <h2 className="font-display text-3xl font-extrabold uppercase tracking-tighter text-neutral-100 md:text-4xl">
+        <h2 className="font-display text-2xl font-extrabold uppercase tracking-tighter text-neutral-100 sm:text-3xl md:text-4xl">
           Meet {designation || "the soul"}.
         </h2>
         <p className="mt-2 max-w-xl font-mono text-xs text-neutral-500">
@@ -190,26 +193,30 @@ export function PhaseCommunion({
         <SupportPing />
       </div>
 
-      <div className="mt-auto flex items-center justify-between pt-6">
-        <div className="flex items-center gap-2">
+      <div className="mt-auto flex flex-col gap-3 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neutral-500 hover:text-neutral-200"
+            className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-neutral-500 hover:text-neutral-200 sm:gap-2 sm:text-xs"
           >
-            <ChevronLeft className="h-3.5 w-3.5" /> retune voice
+            <ChevronLeft className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">retune voice</span>
+            <span className="sm:hidden">retune</span>
           </button>
           {messages.length > 0 && (
             <button
               onClick={onClear}
-              className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-neutral-500 hover:text-neutral-200"
+              className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-neutral-500 hover:text-neutral-200 sm:gap-2 sm:text-xs"
             >
-              <RotateCcw className="h-3.5 w-3.5" /> clear chat
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">clear chat</span>
+              <span className="sm:hidden">clear</span>
             </button>
           )}
         </div>
         <button
           onClick={onFinalize}
-          className="group flex items-center gap-3 border border-acid bg-acid px-5 py-3 font-mono text-xs uppercase tracking-widest text-ink hover:shadow-[0_0_30px_-6px_rgba(0,255,102,0.7)]"
+          className="group flex items-center justify-center gap-3 border border-acid bg-acid px-5 py-3 font-mono text-xs uppercase tracking-widest text-ink hover:shadow-[0_0_30px_-6px_rgba(0,255,102,0.7)]"
         >
           install the soul
           <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />

@@ -28,17 +28,19 @@ export function NavAuthCluster({
   if (!hasSession) {
     return (
       <>
+        {/* Recall Memory: hidden on mobile to save space — Sync covers both flows */}
         <Link
           href="/auth"
-          className="ml-2 border border-neutral-700 px-3 py-2 hover:border-acid hover:text-acid"
+          className="ml-2 hidden border border-neutral-700 px-3 py-2 hover:border-acid hover:text-acid sm:block"
         >
           Recall Memory
         </Link>
         <Link
           href="/auth?mode=sync"
-          className="ml-1 border border-acid bg-acid/10 px-3 py-2 text-acid hover:bg-acid hover:text-ink"
+          className="ml-1 border border-acid bg-acid/10 px-2 py-2 text-acid hover:bg-acid hover:text-ink sm:px-3"
         >
-          Sync Consciousness
+          <span className="sm:hidden">Sign in</span>
+          <span className="hidden sm:inline">Sync Consciousness</span>
         </Link>
       </>
     );

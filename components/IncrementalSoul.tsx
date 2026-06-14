@@ -1,9 +1,12 @@
 "use client";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown } from "lucide-react";
 import { ParticleMatrix } from "./ParticleMatrix";
 import { BRANCH_META } from "@/lib/branches";
 import { SHADOW_DYADS } from "@/lib/dyads";
 import { tasteToTone } from "@/lib/tasteTest";
+import { cn } from "@/lib/cn";
 import type { ForgeState } from "@/lib/types";
 
 // THE KEYSTONE
@@ -14,9 +17,66 @@ import type { ForgeState } from "@/lib/types";
 export function IncrementalSoul({ state }: { state: ForgeState }) {
   const intensity = fragmentCount(state);
   const meta = state.branch ? BRANCH_META[state.branch] : null;
+  // mobile-only: start collapsed so the active question owns the
+  // screen. desktop ignores this state entirely (always visible).
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className="relative h-full min-h-[600px] overflow-hidden border border-neutral-800 bg-neutral-950/40 scanlines">
+    <>
+      {/* MOBILE: collapsed handle + drawer */}
+      <div className="lg:hidden">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center justify-between border border-neutral-800 bg-neutral-950/60 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.2em] text-neutral-400 hover:border-neutral-600"
+        >
+          <span className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 bg-acid animate-flicker" />
+            soul.md — {intensity} fragment{intensity === 1 ? "" : "s"}
+          </span>
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")}
+          />
+        </button>
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              <div className="mt-2">
+                <SoulPanel state={state} meta={meta} intensity={intensity} mobile />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* DESKTOP: classic side-by-side panel */}
+      <div className="hidden lg:block">
+        <SoulPanel state={state} meta={meta} intensity={intensity} />
+      </div>
+    </>
+  );
+}
+
+function SoulPanel({
+  state, meta, intensity, mobile = false,
+}: {
+  state: ForgeState;
+  meta: ReturnType<() => typeof BRANCH_META[keyof typeof BRANCH_META]> | null;
+  intensity: number;
+  mobile?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden border border-neutral-800 bg-neutral-950/40 scanlines",
+        mobile ? "min-h-[360px]" : "h-full min-h-[600px]"
+      )}
+    >
       <div className="absolute inset-0 grid-bg opacity-40" />
       <ParticleMatrix intensity={intensity} />
       <div className="pointer-events-none absolute inset-x-0 h-px bg-acid/40 animate-scan" />

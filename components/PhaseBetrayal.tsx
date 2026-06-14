@@ -26,14 +26,14 @@ export function PhaseBetrayal({
   const enough = value.trim().length >= MIN;
 
   return (
-    <div className="relative flex min-h-[600px] flex-col border border-neutral-800 bg-neutral-950/40 p-8">
+    <div className="relative flex min-h-[480px] flex-col border border-neutral-800 bg-neutral-950/40 p-5 sm:min-h-[600px] sm:p-8">
       <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.25em] text-neutral-500">
         <span>phase_04 // betrayal</span>
         <span className="text-acid">// banned :: verbatim</span>
       </div>
 
       <div className="mt-8">
-        <h2 className="font-display text-3xl font-extrabold uppercase tracking-tighter text-neutral-100 md:text-5xl">
+        <h2 className="font-display text-2xl font-extrabold uppercase tracking-tighter text-neutral-100 sm:text-3xl md:text-5xl">
           What would make you delete it?
         </h2>
         <p className="mt-3 max-w-xl font-mono text-sm text-neutral-400">

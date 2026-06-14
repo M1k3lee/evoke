@@ -25,14 +25,14 @@ export function PhaseTasteTest({
   const scenario = TASTE_SCENARIOS[branch];
 
   return (
-    <div className="relative flex min-h-[600px] flex-col border border-neutral-800 bg-neutral-950/40 p-8">
+    <div className="relative flex min-h-[480px] flex-col border border-neutral-800 bg-neutral-950/40 p-5 sm:min-h-[600px] sm:p-8">
       <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.25em] text-neutral-500">
         <span>phase_05 // taste test</span>
         <span className="text-acid">// contrastive calibration</span>
       </div>
 
       <div className="mt-8">
-        <h2 className="font-display text-3xl font-extrabold uppercase tracking-tighter text-neutral-100 md:text-5xl">
+        <h2 className="font-display text-2xl font-extrabold uppercase tracking-tighter text-neutral-100 sm:text-3xl md:text-5xl">
           Pick the one that tastes right.
         </h2>
         <p className="mt-3 max-w-xl font-mono text-sm text-neutral-400">

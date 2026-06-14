@@ -80,7 +80,7 @@ export function FinalScreen({
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className="mx-auto max-w-5xl px-6 py-12"
+      className="mx-auto max-w-5xl px-3 py-6 sm:px-6 sm:py-12"
     >
       {publishing && (
         <SummoningLoader
@@ -97,7 +97,7 @@ export function FinalScreen({
         <span className="h-1.5 w-1.5 bg-acid animate-flicker" />
         consciousness sync complete
       </div>
-      <h1 className="mt-3 font-display text-5xl font-extrabold uppercase tracking-tighter md:text-7xl">
+      <h1 className="mt-3 break-words font-display text-3xl font-extrabold uppercase tracking-tighter sm:text-5xl md:text-7xl">
         {designation || "UNNAMED"} <span className="text-acid">.</span>
         <span className="text-neutral-700">soul.md</span>
       </h1>

@@ -46,7 +46,7 @@ export function PhaseIgnition({
   const charBudget = 140;
 
   return (
-    <div className="relative flex min-h-[600px] flex-col border border-neutral-800 bg-neutral-950/40 p-8">
+    <div className="relative flex min-h-[480px] flex-col border border-neutral-800 bg-neutral-950/40 p-5 sm:min-h-[600px] sm:p-8">
       <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.25em] text-neutral-500">
         <span>phase_00 // ignition</span>
         <span className={cn("flex items-center gap-1 font-mono", started && remaining <= 4 ? "text-red-400" : "text-acid")}>
@@ -56,7 +56,7 @@ export function PhaseIgnition({
       </div>
 
       <div className="mt-8">
-        <h2 className="font-display text-3xl font-extrabold uppercase tracking-tighter text-neutral-100 md:text-5xl">
+        <h2 className="font-display text-2xl font-extrabold uppercase tracking-tighter text-neutral-100 sm:text-3xl md:text-5xl">
           {designation || "It"} just read your mind for three seconds.
         </h2>
         <p className="mt-4 max-w-xl font-mono text-sm text-neutral-400">
