@@ -2,11 +2,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowUp, MessageSquare, GitFork, AlertOctagon, ExternalLink } from "lucide-react";
+import { ArrowUp, MessageSquare, AlertOctagon, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { BRANCH_META } from "@/lib/branches";
 import { toggleVote } from "@/lib/db/votes";
 import type { CloudSoulWithAuthor } from "@/lib/db/souls";
+import { ReportModal } from "@/components/ReportModal";
 
 export function PublicSoulGrid({
   souls,
@@ -53,6 +54,7 @@ function PublicSoulCard({
   const [voted, setVoted] = useState(soul.voted);
   const [count, setCount] = useState(soul.upvote_count);
   const [voting, setVoting] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const meta = BRANCH_META[soul.branch];
   const dateStr = new Date(soul.created_at).toLocaleString(undefined, {
     month: "short", day: "numeric",
@@ -151,18 +153,24 @@ function PublicSoulCard({
           </Link>
           <button
             onClick={() => {
-              // mailto fallback so we have *something* for moderation
-              // until a real report flow ships
-              const subj = encodeURIComponent(`Report: ${soul.designation} (${soul.id})`);
-              window.location.href = `mailto:abuse@evoke.local?subject=${subj}`;
+              if (!signedIn) { window.location.href = "/auth"; return; }
+              setReporting(true);
             }}
             className="grid h-7 w-7 place-items-center border border-neutral-800 text-neutral-400 hover:border-red-500 hover:text-red-400"
-            title="Report"
+            title="Report this soul"
           >
             <AlertOctagon className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
+
+      {reporting && (
+        <ReportModal
+          soulId={soul.id}
+          soulName={soul.designation}
+          onClose={() => setReporting(false)}
+        />
+      )}
     </motion.div>
   );
 }
