@@ -29,6 +29,7 @@ export function PhaseCommunion({
   onClear,
   onFixContradiction,
   onTuneSoul,
+  canTune = true,
 }: {
   designation: string;
   branch: Branch;
@@ -44,6 +45,10 @@ export function PhaseCommunion({
   onClear: () => void;
   onFixContradiction?: (c: { description: string; fields: string[]; suggestedFix: string }) => Promise<{ note: string } | null>;
   onTuneSoul?: (args: { feedback: string; triggeringReply: string; operatorMessage: string }) => Promise<{ note: string } | null>;
+  // false when chatting with a soul you don't own (a fork). hides the
+  // "this felt off — revise" tune affordance — you can talk + fork, not
+  // reshape someone else's published soul in place.
+  canTune?: boolean;
 }) {
   const [draft, setDraft] = useState("");
   const [reviseFor, setReviseFor] = useState<string | null>(null);
@@ -141,7 +146,11 @@ export function PhaseCommunion({
               </div>
               <div className="mt-1 whitespace-pre-wrap">{m.text}</div>
 
-              {m.role === "soul" && (
+              {/* the tune affordance is only for the soul's owner. when
+                  chatting with someone else's published soul (canTune
+                  false) you can talk to it and fork it, but not reshape
+                  it in place. */}
+              {m.role === "soul" && canTune && (
                 <div className="mt-2">
                   {reviseFor === m.id ? (
                     <TunePanel

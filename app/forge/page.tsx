@@ -650,6 +650,7 @@ function ForgeInner() {
             }, {
               suggestedBranch,
               suggestedAnchors,
+              canTune: !forkedFrom,
             })}
           </motion.div>
         </AnimatePresence>
@@ -689,6 +690,7 @@ type Handlers = {
 type RenderExtras = {
   suggestedBranch: Branch | null;
   suggestedAnchors: string[];
+  canTune: boolean;
 };
 
 function renderPhase(s: ForgeState, h: Handlers, extras?: RenderExtras) {
@@ -813,6 +815,7 @@ function renderPhase(s: ForgeState, h: Handlers, extras?: RenderExtras) {
           onClear={h.clearChat}
           onFixContradiction={h.applyContradictionFix}
           onTuneSoul={h.applyTuneSoul}
+          canTune={extras?.canTune ?? true}
         />
       );
     default:
