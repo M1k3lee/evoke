@@ -7,13 +7,14 @@ import { createClient } from "./supabase/server";
 export type AuthedUser = {
   id: string;
   email: string | null;
-  // profile may be null if the user signed up but hasn't picked a
-  // username yet. the onboarding page handles that case.
   profile: {
     id: string;
     username: string;
     display_name: string | null;
     bio: string | null;
+    title: string | null;
+    sanctioned: boolean;
+    signals: Array<{ label: string; url: string }>;
   } | null;
 };
 
@@ -24,7 +25,7 @@ export async function getCurrentUser(): Promise<AuthedUser | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, username, display_name, bio")
+    .select("id, username, display_name, bio, title, sanctioned, signals")
     .eq("id", user.id)
     .maybeSingle();
 

@@ -18,7 +18,8 @@ export type CloudSoul = {
   soul_md: string;
   visibility: "private" | "public";
   upvote_count: number;
-  // NEW: surfaced from the intent phase
+  fork_count: number;
+  forked_from: string | null;
   mission: string | null;
   spice_level: 1 | 2 | 3 | 4;
   created_at: string;
@@ -27,7 +28,8 @@ export type CloudSoul = {
 
 export type CloudSoulWithAuthor = CloudSoul & {
   author: { username: string; display_name: string | null } | null;
-  voted: boolean; // did the current user upvote this?
+  voted: boolean;
+  bookmarked: boolean;
 };
 
 // commit a soul to the user's cloud vault. pass an existing id to
@@ -101,6 +103,11 @@ export async function getCloudSoul(id: string): Promise<CloudSoul | null> {
 export async function deleteCloudSoul(id: string): Promise<void> {
   const supabase = createBrowserClient();
   await supabase.from("souls").delete().eq("id", id);
+}
+
+export async function incrementForkCount(soulId: string): Promise<void> {
+  const supabase = createBrowserClient();
+  await supabase.rpc("increment_fork_count", { soul_id: soulId });
 }
 
 export async function setVisibility(

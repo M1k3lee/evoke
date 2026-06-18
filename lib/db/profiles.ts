@@ -49,9 +49,16 @@ export async function createProfile(input: {
   return { ok: true };
 }
 
+export type ProfileSignal = {
+  label: string;
+  url: string;
+};
+
 export async function updateProfile(input: {
   displayName?: string | null;
   bio?: string | null;
+  title?: string | null;
+  signals?: ProfileSignal[];
   matureContentEnabled?: boolean;
 }): Promise<{ ok: true } | { ok: false; reason: string }> {
   const supabase = createClient();
@@ -61,6 +68,8 @@ export async function updateProfile(input: {
   const update: Record<string, unknown> = {};
   if (input.displayName !== undefined) update.display_name = input.displayName;
   if (input.bio !== undefined) update.bio = input.bio;
+  if (input.title !== undefined) update.title = input.title;
+  if (input.signals !== undefined) update.signals = input.signals;
   if (input.matureContentEnabled !== undefined) update.mature_content_enabled = input.matureContentEnabled;
 
   const { error } = await supabase

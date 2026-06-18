@@ -2,12 +2,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowUp, MessageSquare, AlertOctagon, ExternalLink } from "lucide-react";
+import { ArrowUp, MessageSquare, AlertOctagon, ExternalLink, GitFork } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { BRANCH_META } from "@/lib/branches";
 import { toggleVote } from "@/lib/db/votes";
 import type { CloudSoulWithAuthor } from "@/lib/db/souls";
 import { ReportModal } from "@/components/ReportModal";
+import { BookmarkButton } from "@/components/BookmarkButton";
 
 export function PublicSoulGrid({
   souls,
@@ -51,7 +52,7 @@ function PublicSoulCard({
   index: number;
   signedIn: boolean;
 }) {
-  const [voted, setVoted] = useState(soul.voted);
+  const [voted, setVoted] = useState(soul.voted ?? false);
   const [count, setCount] = useState(soul.upvote_count);
   const [voting, setVoting] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -124,19 +125,32 @@ function PublicSoulCard({
       </div>
 
       <div className="mt-5 flex items-center justify-between border-t border-neutral-900 pt-4">
-        <button
-          onClick={onVote}
-          disabled={voting}
-          className={cn(
-            "flex items-center gap-1.5 font-mono text-xs transition-colors",
-            voted ? "text-acid" : "text-neutral-400 hover:text-acid"
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onVote}
+            disabled={voting}
+            className={cn(
+              "flex items-center gap-1.5 font-mono text-xs transition-colors",
+              voted ? "text-acid" : "text-neutral-400 hover:text-acid"
+            )}
+            aria-label={voted ? "remove upvote" : "upvote"}
+          >
+            <ArrowUp className={cn("h-3.5 w-3.5", voted && "fill-acid")} />
+            {count.toLocaleString()}
+          </button>
+          {(soul.fork_count ?? 0) > 0 && (
+            <span className="flex items-center gap-1 font-mono text-[10px] text-neutral-600">
+              <GitFork className="h-3 w-3" />
+              {soul.fork_count}
+            </span>
           )}
-          aria-label={voted ? "remove upvote" : "upvote"}
-        >
-          <ArrowUp className={cn("h-3.5 w-3.5", voted && "fill-acid")} />
-          {count.toLocaleString()}
-        </button>
+        </div>
         <div className="flex gap-1">
+          <BookmarkButton
+            soulId={soul.id}
+            initialBookmarked={soul.bookmarked ?? false}
+            signedIn={signedIn}
+          />
           <Link
             href={`/forge?cloud=${soul.id}&phase=communion`}
             className="grid h-7 w-7 place-items-center border border-neutral-800 text-neutral-400 hover:border-acid hover:text-acid"
