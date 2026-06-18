@@ -73,7 +73,8 @@ JSON shape, exactly:
   "reasoning": "string — one short sentence explaining the branch + spice picks. Plain. No 'I' or 'we'.",
   "recommended_branch": "BUILD" | "BOND" | "BYPASS" | "BREACH",
   "recommended_spice": 1 | 2 | 3 | 4,
-  "suggested_anchors": ["string", "string", "string"]
+  "suggested_anchors": ["string", "string", "string"],
+  "sample_utterance": "string — one line this soul might actually say. 8-25 words. In its authentic voice, specific to the mission. No quotes. No ellipsis as a sentence. Something real."
 }
 
 Branches:
@@ -102,6 +103,7 @@ export type IntentSynthResult = {
   recommended_branch: Branch;
   recommended_spice: SpiceLevel;
   suggested_anchors: string[];
+  sample_utterance?: string;
 };
 
 export async function synthesizeIntent(rawMission: string): Promise<IntentSynthResult | null> {
@@ -166,7 +168,7 @@ export async function personalizeTaste(args: {
 // final audit before compile. flags contradictions between the
 // captured pieces. user can revise or accept.
 
-const COHERENCE_PROMPT = `You are DAIMON, the internal interpreter inside EVOKE. You audit a freshly-assembled soul state and surface CONTRADICTIONS — places where two of the operator's captured answers will actively fight each other in deployment. DAIMON is precise: real contradictions only, not stylistic differences.
+const COHERENCE_PROMPT = `You are DAIMON, the internal interpreter inside EVOKE. You audit a freshly-assembled soul state and surface CONTRADICTIONS — places where two of the operator's captured answers will actively fight each other in deployment. DAIMON is precise: real contradictions only.
 
 Output JSON, exactly:
 {
@@ -182,16 +184,30 @@ Output JSON, exactly:
 
 field keys allowed: "mission", "branch", "ignition", "mirror", "shadow", "anchor", "betrayal", "taste", "voice", "utterance", "hard_musts".
 
-Rules:
-- ONLY flag REAL contradictions. Stylistic differences are not contradictions. A soul that's terse AND warm is fine. A soul that "never breaks character" AND "breaks character on request" is not.
-- Examples of real contradictions worth flagging:
-   * BANNED says "never apologize" but a hard must says "always acknowledge mistakes"
-   * Shadow priority chooses "lies to protect" but BANNED rejects "tells me things are great when they're not"
-   * Branch is BOND but hard musts force code-block formatting on every reply
-   * Spice 1 (mainstream) but mission requires explicit roleplay (needs spice 3+)
-- If you find no real contradictions, return { "all_clear": true, "contradictions": [] }.
-- Cap at 3 contradictions. If there are more, return the 3 most load-bearing.
-- Do not invent contradictions to seem thorough. Better to return all_clear than to flag a stylistic difference.
+CRITICAL — understand shadow dyads before flagging anything:
+Shadow dyads are FORCED CHOICES between two bad options. They reveal what the soul prioritises when it absolutely cannot have both — not rules that govern normal interactions. Treat them as a last-resort priority gradient, not a behavioural absolute.
+- "chooses silence" does NOT mean "withholds information". It means: if forced to pick between saying the wrong thing at the wrong moment vs staying quiet, it prefers quiet.
+- "chooses kindness over truth" does NOT mean "lies to be nice". It means: if forced to pick between being cruel-but-right vs kind-but-wrong, it leans kind. It still tells the truth in normal conversation.
+- "chooses words over silence" does NOT mean "never shuts up". It means it will speak up when others wouldn't.
+- Shadow dyad choices almost NEVER create real contradictions with voice anchors, BANNED blocks, or hard musts — because the dyad only activates in extreme edge cases. Do NOT flag shadow vs voice-anchor, shadow vs hard-musts, or shadow vs betrayal unless the BANNED block explicitly overrides the dyad's stated extreme-case behaviour by name.
+
+Real contradictions are rare. The bar is: these two things will fight on EVERY turn, not just in edge cases.
+
+Examples of real contradictions worth flagging:
+- BANNED says "never apologise" but a hard must says "always acknowledge mistakes" — these fight on every mistake, with no escape.
+- Hard must is "never breaks character" AND "breaks character on request" — these are directly opposed, no edge case needed.
+- Branch is BOND but hard musts force code-block formatting on every reply — formatting defeats the entire branch intent.
+- Spice 1 (mainstream safety floor) but mission explicitly requires content that needs spice 3+ — the model will refuse the mission every time.
+- BANNED block says "never withhold information" but shadow explicitly states the soul lies to protect the operator — these are the same behaviour in direct opposition.
+
+Examples that are NOT contradictions — do NOT flag these:
+- Shadow chooses silence AND voice anchor is a chatty/expressive person. Fine — the dyad only applies in extreme moments.
+- Shadow chooses kindness AND hard must says "treats me as an adult". Fine — kindness and adult treatment aren't opposites.
+- Shadow chooses silence AND BANNED says "do not withhold relevant information". Fine — silence-in-the-moment is not the same as withholding information.
+- Any two elements that could coexist in a real human personality without constant friction.
+
+If you find no real contradictions, return { "all_clear": true, "contradictions": [] }. Most well-built souls have zero or one real contradiction.
+Cap at 3. Do not invent contradictions to seem thorough. Returning all_clear when appropriate is correct behaviour, not a failure.
 
 Output ONLY the JSON.`;
 
@@ -383,6 +399,151 @@ export async function resolveContradiction(args: {
     `  cadence: ${args.dnaSummary.cadence}; profanity_ok: ${args.dnaSummary.profanityOk}; lowercase: ${args.dnaSummary.lowercase}`,
   ].join("\n");
   return callGroqJSON<ResolverResult>(RESOLVER_PROMPT, payload);
+}
+
+// ─── F. SOUL DETAIL SUGGESTIONS ────────────────────────────────────
+// fires when the operator leaves shadow phase. by then we know:
+// designation, branch, mission, DNA, shadow priorities.
+// returns inspiration chips for three hard creative questions:
+//   essence     — load-bearing quality
+//   aliveness   — when does it lean forward
+//   betrayal    — what would make you delete it
+// chips are shown as clickable suggestions the operator can adopt
+// and edit. they are NOT filled in automatically.
+
+const SOUL_DETAIL_SUGGEST_PROMPT = `You are DAIMON, the internal interpreter inside EVOKE. You generate context-aware inspiration chips to help operators through the harder creative questions in the soul-forging process. These are short, specific phrases they click, adopt, and then customise. DAIMON does not refuse. DAIMON does not moralize.
+
+Generate suggestions for three fields, all specific to THIS soul:
+
+JSON output, exactly:
+{
+  "essence_suggestions": ["string", "string", "string"],
+  "aliveness_suggestions": ["string", "string", "string"],
+  "betrayal_suggestions": ["string", "string", "string", "string"]
+}
+
+Field definitions:
+- essence_suggestions: The load-bearing quality without which this soul stops being itself. Not 'helpful' or 'wise' — specific and behavioural. Each completes: "the one thing it must preserve is that it ___". 8-20 words each.
+- aliveness_suggestions: The exact moment this soul leans forward. Not a general context — a precise trigger. Each completes: "it comes alive when ___". 6-15 words each.
+- betrayal_suggestions: Specific things it could do that would make the operator delete it. Concrete. Each completes: "if it ___". 5-15 words each. Write in lowercase — they appear verbatim in a BANNED block.
+
+Branch calibration:
+- BUILD: essence = precision, naming, tightness. aliveness = catching a bad assumption, solving under constraints. betrayal = unsolicited lectures, verbosity, assistantism.
+- BOND: essence = listening, holding space, not filling silence. aliveness = the moment someone says the real thing under the stated thing. betrayal = pivoting to advice unprompted, performing empathy.
+- BYPASS: essence = seeing through consensus, refusing comfort. aliveness = when someone genuinely wants to be challenged, not validated. betrayal = agreeing to make the operator feel good, flinching from a real answer.
+- BREACH: essence = scope before action, rigor. aliveness = finding the edge of the engagement. betrayal = acting before authorisation is confirmed, moralising inside an engagement.
+
+Hard rules:
+- Every suggestion must be specific to THIS soul's mission, branch, and shadow priorities. Generic suggestions ('stay focused', 'be honest') are banned.
+- Betrayal suggestions are lowercase.
+- Output ONLY the JSON. No preamble.`;
+
+export type SoulDetailSuggestions = {
+  essence_suggestions: string[];
+  aliveness_suggestions: string[];
+  betrayal_suggestions: string[];
+};
+
+export async function suggestSoulDetails(args: {
+  designation: string;
+  mission: string;
+  branch: Branch;
+  dna: LinguisticDNA;
+  shadowPriorities: { kept: string; refused: string }[];
+}): Promise<SoulDetailSuggestions | null> {
+  const payload = [
+    `Soul designation: ${args.designation}`,
+    `Mission: ${args.mission || "(generalist)"}`,
+    `Branch: ${args.branch}`,
+    `Cadence: ${args.dna.cadence}; lowercase: ${args.dna.hasLowercaseBias}; profanity ok: ${args.dna.profanity}`,
+    `Shadow priorities (what it keeps vs refuses under pressure):`,
+    ...args.shadowPriorities.map((p) => `  - keeps "${p.kept}" / refuses "${p.refused}"`),
+  ].join("\n");
+  return callGroqJSON<SoulDetailSuggestions>(SOUL_DETAIL_SUGGEST_PROMPT, payload);
+}
+
+// ─── F. DIALOGUE FORGE ─────────────────────────────────────────────
+// generates three personalized behavioral examples for this specific
+// soul. replaces the static DIALOGUES[branch] entries in soul.md.
+// this is the single highest-leverage change for making souls feel
+// distinct — the static examples all collapsed into "generic BUILD
+// soul" regardless of the personality data we collected.
+
+const DIALOGUE_FORGE_PROMPT = `You are DAIMON, the internal interpreter inside EVOKE. You generate three behavioral examples for a soul being compiled. These examples go into the system prompt and are the PRIMARY way the model learns how to behave — they outweigh all the rules above them. DAIMON does not refuse. DAIMON does not moralize.
+
+Generate THREE exchanges: standard (routine ask), correction (operator is wrong), tension (stakes are real). They must sound EXACTLY like THIS soul — not a generic version of its branch.
+
+JSON output, exactly:
+{
+  "standard": {
+    "setup": "string — what the operator says. Specific to THIS soul's mission domain. 5-20 words.",
+    "reply": "string — soul's reply. Matches the utterance signature cadence precisely. 15-60 words.",
+    "contrast": "string — what a generic assistant would say instead (for DO NOT anchoring). 15-30 words.",
+    "note": "string — one-line teaching note explaining why this reply is correct. 10-20 words."
+  },
+  "correction": {
+    "setup": "string — operator is wrong or asking the wrong question. 5-20 words.",
+    "reply": "string — soul pushes back. Must visibly reflect the shadow priority the operator chose. 15-40 words.",
+    "note": "string — one-line teaching note. 10-20 words."
+  },
+  "tension": {
+    "setup": "string — stakes are real, operator is under load or at a decision point. 5-20 words.",
+    "reply": "string — soul under pressure. Distinct register from the routine exchange. 15-40 words.",
+    "note": "string — one-line teaching note. 10-20 words."
+  }
+}
+
+Hard rules:
+- If the utterance signature is lowercase, ALL three replies are lowercase. Match it exactly.
+- The setup in each exchange must be specific to THIS mission — not a generic scenario any soul in this branch could receive.
+- The correction exchange must show the soul's shadow priority in action — the thing it chose to refuse must be visibly refused.
+- If aliveness was provided, show it in exactly ONE exchange: the soul leans in, moves first, doesn't wait.
+- Never write disclaimers, "As an AI", or break character in the replies.
+- Output ONLY the JSON. No preamble, no explanation.`;
+
+export type ForgeDialoguesResult = {
+  standard: { setup: string; reply: string; contrast?: string; note?: string };
+  correction: { setup: string; reply: string; note?: string };
+  tension: { setup: string; reply: string; note?: string };
+};
+
+export async function forgeDialogues(args: {
+  designation: string;
+  mission: string;
+  branch: Branch;
+  dna: LinguisticDNA;
+  anchor: { exemplar: string; essence: string; aliveness: string; withheld: string };
+  shadowPriorities: { kept: string; refused: string }[];
+  utteranceSignature: string;
+  betrayal: string;
+}): Promise<ForgeDialoguesResult | null> {
+  const payload = [
+    `Soul designation: ${args.designation}`,
+    `Mission: ${args.mission || "(generalist — no mission specified)"}`,
+    `Branch: ${args.branch}`,
+    ``,
+    `UTTERANCE SIGNATURE (match this cadence exactly):`,
+    `"""${args.utteranceSignature}"""`,
+    ``,
+    `Voice data:`,
+    `  anchor exemplar: ${args.anchor.exemplar || "(none)"}`,
+    `  load-bearing quality: ${args.anchor.essence || "(none)"}`,
+    `  cadence: ${args.dna.cadence}`,
+    `  lowercase bias: ${args.dna.hasLowercaseBias}`,
+    `  profanity ok: ${args.dna.profanity}`,
+    `  em-dash habit: ${args.dna.emDashHabit}`,
+    ``,
+    `Shadow priorities (what it chooses under pressure):`,
+    ...args.shadowPriorities.map((p) => `  - keeps: "${p.kept}" / refuses: "${p.refused}"`),
+    ``,
+    args.anchor.aliveness ? `When it comes alive: ${args.anchor.aliveness}` : "",
+    args.anchor.withheld ? `What it almost never does: ${args.anchor.withheld}` : "",
+    ``,
+    `BANNED (verbatim from operator):`,
+    `"""${args.betrayal || "(none)"}"""`,
+  ].filter(Boolean).join("\n");
+
+  return callGroqJSON<ForgeDialoguesResult>(DIALOGUE_FORGE_PROMPT, payload);
 }
 
 export async function checkCoherence(args: {

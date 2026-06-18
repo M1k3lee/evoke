@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { ArrowRight, ChevronLeft } from "lucide-react";
+import { ArrowRight, ChevronLeft, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 // PHASE 4 — BETRAYAL
@@ -13,17 +13,25 @@ const MAX = 500;
 export function PhaseBetrayal({
   designation,
   value,
+  suggestions,
   onChange,
   onBack,
   onNext,
 }: {
   designation: string;
   value: string;
+  suggestions?: string[];
   onChange: (v: string) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
   const enough = value.trim().length >= MIN;
+
+  function appendSuggestion(chip: string) {
+    const current = value.trim();
+    const next = current ? `${current}\n${chip}` : chip;
+    onChange(next.slice(0, MAX));
+  }
 
   return (
     <div className="relative flex min-h-[480px] flex-col border border-neutral-800 bg-neutral-950/40 p-5 sm:min-h-[600px] sm:p-8">
@@ -50,6 +58,32 @@ export function PhaseBetrayal({
         transition={{ delay: 0.15 }}
         className="mt-8"
       >
+        {/* DAIMON suggestion chips — shown when available */}
+        {suggestions && suggestions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-4"
+          >
+            <div className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.2em] text-cyan/70">
+              <Sparkles className="h-2.5 w-2.5" />
+              DAIMON's read — click to add, then edit
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {suggestions.map((chip) => (
+                <button
+                  key={chip}
+                  onClick={() => appendSuggestion(chip)}
+                  className="border border-cyan/30 px-2.5 py-1.5 font-mono text-[10px] leading-snug text-cyan/80 transition-colors hover:border-cyan/60 hover:bg-cyan/5 hover:text-cyan text-left"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         <div className={cn(
           "border bg-black/40 p-4 font-mono text-sm leading-relaxed transition-colors",
           enough ? "border-red-500/60" : "border-neutral-800 focus-within:border-neutral-500"

@@ -3,7 +3,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { INITIAL_STATE, PHASE_ORDER, withCleanSession } from "@/lib/types";
-import type { Branch, ChatMessage, DyadChoice, ForgeState, Phase, PersonalizedTaste, TasteOption, UtteranceTuning, CoherenceReport } from "@/lib/types";
+import type { Branch, ChatMessage, DyadChoice, ForgeState, ForgeDialogueSet, MirrorPromptId, Phase, PersonalizedTaste, TasteOption, UtteranceTuning, CoherenceReport } from "@/lib/types";
+import type { SoulDetailSuggestions } from "@/lib/groqAssist";
 import type { Intent } from "@/lib/intent";
 import { extractDNA } from "@/lib/linguisticDNA";
 import { generateSoulMarkdown } from "@/lib/generateSoul";
@@ -128,12 +129,17 @@ function ForgeInner() {
   // ?fresh=1 — wipe everything and start a new build. fires on mount
   // AND on client-side query changes (Nav → /forge?fresh=1 while
   // already at /forge doesn't remount the component).
+  // ?mission=<text> — pre-fills the mission from the homepage teaser.
   useEffect(() => {
     if (searchParams.get("fresh") === "1") {
+      const prefilledMission = searchParams.get("mission") ?? "";
       clearDraft();
       setLoadedId(null);
       setForkedFrom(null);
-      setState(INITIAL_STATE);
+      setState(prefilledMission
+        ? { ...INITIAL_STATE, intent: { ...INITIAL_STATE.intent, mission: prefilledMission } }
+        : INITIAL_STATE
+      );
       router.replace("/forge");
     }
   }, [searchParams, router]);
@@ -152,6 +158,12 @@ function ForgeInner() {
     setState((s) => {
       const i = PHASE_ORDER.indexOf(s.phase);
       const next = PHASE_ORDER[Math.min(i + 1, PHASE_ORDER.length - 1)];
+      // leaving shadow → anchor: fire soul-detail suggestions so
+      // essence/aliveness/betrayal chips are ready by the time the
+      // operator reaches those phases (~1-3 phases away).
+      if (s.phase === "shadow") {
+        void suggestSoulDetailsIfPossible();
+      }
       // when advancing OUT of anchor (into betrayal), fire the
       // personalization in the background so the scenario is ready
       // by the time the user lands on the taste test (~2 phases later)
@@ -163,6 +175,7 @@ function ForgeInner() {
       // communion. one groq call, ~2 seconds, in the background.
       if (s.phase === "tasteTest") {
         void runCoherenceCheck();
+        void forgeDialoguesIfPossible();
       }
       return { ...s, phase: next };
     });
@@ -182,11 +195,14 @@ function ForgeInner() {
   const [suggestedAnchors, setSuggestedAnchors] = useState<string[]>([]);
   const [personalizing, setPersonalizing] = useState(false);
   const [coherencePending, setCoherencePending] = useState(false);
+  const [forgingDialogues, setForgingDialogues] = useState(false);
+  const [soulDetailSuggestions, setSoulDetailSuggestions] = useState<SoulDetailSuggestions | null>(null);
 
   function setDesignation(v: string) { setState((s) => ({ ...s, designation: v })); }
   function setIntent(v: Intent) { setState((s) => ({ ...s, intent: v })); }
   function setBranch(b: Branch) { setState((s) => ({ ...s, branch: b })); }
   function setIgnition(v: string) { setState((s) => ({ ...s, ignition: v })); }
+  function setMirrorPromptId(id: MirrorPromptId) { setState((s) => ({ ...s, mirrorPromptId: id })); }
   function setMirror(v: string) { setState((s) => ({ ...s, mirror: v })); }
   function setShadow(id: string, c: DyadChoice) {
     setState((s) => ({ ...s, shadow: { ...s.shadow, [id]: c } }));
@@ -196,6 +212,12 @@ function ForgeInner() {
   }
   function setAnchorEssence(v: string) {
     setState((s) => ({ ...s, anchor: { ...s.anchor, essence: v } }));
+  }
+  function setAnchorAliveness(v: string) {
+    setState((s) => ({ ...s, anchor: { ...s.anchor, aliveness: v } }));
+  }
+  function setAnchorWithheld(v: string) {
+    setState((s) => ({ ...s, anchor: { ...s.anchor, withheld: v } }));
   }
   function setBetrayal(v: string) { setState((s) => ({ ...s, betrayal: v })); }
   function setTasteTest(v: TasteOption) {
@@ -278,7 +300,6 @@ function ForgeInner() {
   }
 
   function finishMirror() {
-    // derive DNA on transition out of mirror phase
     setState((s) => ({ ...s, dna: extractDNA(s.mirror), phase: "shadow" }));
   }
 
@@ -312,6 +333,90 @@ function ForgeInner() {
       // silent — taste test falls back to static scenarios
     } finally {
       setPersonalizing(false);
+    }
+  }
+
+  // fire-and-forget — generates inspiration chips for essence, aliveness,
+  // and betrayal fields. fires on shadow→anchor so chips arrive before
+  // the operator reaches any of those three questions.
+  async function suggestSoulDetailsIfPossible() {
+    const s = stateRef.current;
+    if (!s.branch || !s.dna) return;
+    try {
+      const { SHADOW_DYADS: dyads } = await import("@/lib/dyads");
+      const shadowPriorities = Object.entries(s.shadow).map(([id, choice]) => {
+        const dyad = dyads.find((d) => d.id === id);
+        if (!dyad) return null;
+        return choice === "A"
+          ? { kept: dyad.optionA, refused: dyad.optionB }
+          : { kept: dyad.optionB, refused: dyad.optionA };
+      }).filter(Boolean) as { kept: string; refused: string }[];
+
+      const res = await fetch("/api/soul-detail-suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          designation: s.designation,
+          mission: s.intent.mission,
+          branch: s.branch,
+          dna: s.dna,
+          shadowPriorities,
+        }),
+      });
+      if (!res.ok) return;
+      const data = await res.json() as SoulDetailSuggestions;
+      if (data?.essence_suggestions || data?.aliveness_suggestions || data?.betrayal_suggestions) {
+        setSoulDetailSuggestions(data);
+      }
+    } catch {
+      // silent — fields just won't show suggestion chips
+    }
+  }
+
+  // fire-and-forget — generates personalized behavioral examples using
+  // all the soul data collected so far. fired at the same moment as the
+  // coherence check (tasteTest→utterance) so it's ready before communion.
+  // falls back to static DIALOGUES[branch] if groq is unavailable.
+  async function forgeDialoguesIfPossible() {
+    const s = stateRef.current;
+    if (!s.branch || !s.dna) return;
+    if (forgingDialogues) return;
+    setForgingDialogues(true);
+    try {
+      const { generateUtterance } = await import("@/lib/utterance");
+      const { SHADOW_DYADS: dyads } = await import("@/lib/dyads");
+      const utteranceSignature = generateUtterance(s.branch, s.utterance);
+      const shadowPriorities = Object.entries(s.shadow).map(([id, choice]) => {
+        const dyad = dyads.find((d) => d.id === id);
+        if (!dyad) return null;
+        return choice === "A"
+          ? { kept: dyad.optionA, refused: dyad.optionB }
+          : { kept: dyad.optionB, refused: dyad.optionA };
+      }).filter(Boolean) as { kept: string; refused: string }[];
+
+      const res = await fetch("/api/dialogue-forge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          designation: s.designation,
+          mission: s.intent.mission,
+          branch: s.branch,
+          dna: s.dna,
+          anchor: s.anchor,
+          shadowPriorities,
+          utteranceSignature,
+          betrayal: s.betrayal,
+        }),
+      });
+      if (!res.ok) return;
+      const data = await res.json() as ForgeDialogueSet;
+      if (data?.standard && data?.correction && data?.tension) {
+        setState((cur) => ({ ...cur, personalizedDialogues: data }));
+      }
+    } catch {
+      // silent — generateSoul falls back to static DIALOGUES[branch]
+    } finally {
+      setForgingDialogues(false);
     }
   }
 
@@ -638,8 +743,10 @@ function ForgeInner() {
             transition={{ duration: 0.3 }}
           >
             {renderPhase(state, {
-              setDesignation, setIntent, setBranch, setIgnition, setMirror,
+              setDesignation, setIntent, setBranch, setIgnition,
+              setMirror, setMirrorPromptId,
               setShadow, setAnchorExemplar, setAnchorEssence,
+              setAnchorAliveness, setAnchorWithheld,
               setBetrayal, setTasteTest, setUtterance,
               setSuggestedBranch, setSuggestedAnchors,
               advance, rewind, finishMirror, complete,
@@ -651,6 +758,7 @@ function ForgeInner() {
               suggestedBranch,
               suggestedAnchors,
               canTune: !forkedFrom,
+              soulDetailSuggestions,
             })}
           </motion.div>
         </AnimatePresence>
@@ -667,9 +775,12 @@ type Handlers = {
   setBranch: (b: Branch) => void;
   setIgnition: (v: string) => void;
   setMirror: (v: string) => void;
+  setMirrorPromptId: (id: MirrorPromptId) => void;
   setShadow: (id: string, c: DyadChoice) => void;
   setAnchorExemplar: (v: string) => void;
   setAnchorEssence: (v: string) => void;
+  setAnchorAliveness: (v: string) => void;
+  setAnchorWithheld: (v: string) => void;
   setBetrayal: (v: string) => void;
   setTasteTest: (v: TasteOption) => void;
   setUtterance: (t: UtteranceTuning) => void;
@@ -691,6 +802,7 @@ type RenderExtras = {
   suggestedBranch: Branch | null;
   suggestedAnchors: string[];
   canTune: boolean;
+  soulDetailSuggestions: SoulDetailSuggestions | null;
 };
 
 function renderPhase(s: ForgeState, h: Handlers, extras?: RenderExtras) {
@@ -740,7 +852,9 @@ function renderPhase(s: ForgeState, h: Handlers, extras?: RenderExtras) {
       return (
         <PhaseMirror
           value={s.mirror}
+          promptId={s.mirrorPromptId ?? "conflict"}
           onChange={h.setMirror}
+          onPromptChange={h.setMirrorPromptId}
           onBack={h.rewind}
           onNext={h.finishMirror}
         />
@@ -759,9 +873,15 @@ function renderPhase(s: ForgeState, h: Handlers, extras?: RenderExtras) {
         <PhaseAnchor
           exemplar={s.anchor.exemplar}
           essence={s.anchor.essence}
+          aliveness={s.anchor.aliveness ?? ""}
+          withheld={s.anchor.withheld ?? ""}
           suggestions={extras?.suggestedAnchors}
+          essenceSuggestions={extras?.soulDetailSuggestions?.essence_suggestions}
+          alivenessSuggestions={extras?.soulDetailSuggestions?.aliveness_suggestions}
           onExemplar={h.setAnchorExemplar}
           onEssence={h.setAnchorEssence}
+          onAliveness={h.setAnchorAliveness}
+          onWithheld={h.setAnchorWithheld}
           onBack={h.rewind}
           onNext={h.advance}
         />
@@ -771,6 +891,7 @@ function renderPhase(s: ForgeState, h: Handlers, extras?: RenderExtras) {
         <PhaseBetrayal
           designation={s.designation}
           value={s.betrayal}
+          suggestions={extras?.soulDetailSuggestions?.betrayal_suggestions}
           onChange={h.setBetrayal}
           onBack={h.rewind}
           onNext={h.advance}

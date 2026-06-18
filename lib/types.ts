@@ -133,22 +133,45 @@ export type ContradictionFix = {
   note: string;
 };
 
+// dialogue exchange types — defined here to avoid circular dep with dialogues.ts
+export type ForgeExchange = {
+  setup: string;
+  reply: string;
+  contrast?: string;
+  note?: string;
+};
+
+export type ForgeDialogueSet = {
+  standard: ForgeExchange;
+  correction: ForgeExchange;
+  tension: ForgeExchange;
+};
+
+export type MirrorPromptId = "conflict" | "rant" | "observation";
+
 export type ForgeState = {
   phase: Phase;
   designation: string;
   intent: import("./intent").Intent;  // NEW: mission, spice, hard musts
   branch: Branch | null;
   ignition: string;                // phase 0 — captured opening sentence
+  mirrorPromptId: MirrorPromptId;  // which mirror prompt the operator chose
   mirror: string;                  // phase 1 — prose sample
   dna: LinguisticDNA | null;       // derived from mirror
   shadow: Record<string, DyadChoice>; // phase 2
-  anchor: { exemplar: string; essence: string }; // phase 3
+  anchor: {                        // phase 3
+    exemplar: string;
+    essence: string;
+    aliveness: string;             // when this soul comes forward
+    withheld: string;              // what it almost never does
+  };
   betrayal: string;                // phase 4 — verbatim banned behavior
   tasteTest: TasteOption | null;   // phase 5
-  personalizedTaste: PersonalizedTaste; // NEW: groq-generated scenario
+  personalizedTaste: PersonalizedTaste; // groq-generated scenario
   utterance: UtteranceTuning;      // phase 6
   communion: CommunionState;       // phase 7 — live chat with the freshly compiled soul
-  coherence: CoherenceReport;      // NEW: pre-compile audit
+  coherence: CoherenceReport;      // pre-compile audit
+  personalizedDialogues: ForgeDialogueSet | null; // groq-generated examples at compile time
 };
 
 import { EMPTY_INTENT } from "./intent";
@@ -159,16 +182,18 @@ export const INITIAL_STATE: ForgeState = {
   intent: EMPTY_INTENT,
   branch: null,
   ignition: "",
+  mirrorPromptId: "conflict",
   mirror: "",
   dna: null,
   shadow: {},
-  anchor: { exemplar: "", essence: "" },
+  anchor: { exemplar: "", essence: "", aliveness: "", withheld: "" },
   betrayal: "",
   tasteTest: null,
   personalizedTaste: null,
   utterance: { intensity: 55, formality: 35, warmth: 40 },
   communion: { messages: [], pending: false, error: null },
   coherence: null,
+  personalizedDialogues: null,
 };
 
 // session-turn cap for free communion. revisit when accounts ship.

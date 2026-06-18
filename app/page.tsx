@@ -5,6 +5,7 @@ import {
   Sparkles, Flame, Crosshair, HeartCrack,
 } from "lucide-react";
 import { GlitchText } from "@/components/GlitchText";
+import { DaimonTeaser } from "@/components/DaimonTeaser";
 
 export default function Home() {
   return (
@@ -92,24 +93,25 @@ export default function Home() {
 
           <div className="mt-10 grid gap-12 md:grid-cols-2">
             <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-red-400/80">
-                // what others do
+              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-neutral-500">
+                // why adjectives fail
               </div>
               <p className="mt-2 font-mono text-sm leading-relaxed text-neutral-400">
-                You pick "funny" or "serious." You drag a slider from 1 to 5.
-                The output is a personality your AI will perform — generic, hollow,
-                and identical to ten thousand other AIs built the same way.
+                Self-reported traits are aspirational. When you pick "witty" or "empathetic",
+                you describe who you <em>want</em> the soul to be — not how it behaves when
+                cornered. Adjectives produce performance. Under pressure, performance collapses
+                back to whatever the base model defaults to.
               </p>
             </div>
             <div>
               <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-acid">
-                // what EVOKE does
+                // what we capture instead
               </div>
               <p className="mt-2 font-mono text-sm leading-relaxed text-neutral-300">
-                We capture <em>behavior under five cognitive conditions</em> — time
-                pressure, forced trade-off, projective anchoring, negative space,
-                contrastive selection. The model doesn't get a description of a
-                character. It gets a command, in your voice, that it has to obey.
+                Behavior under five cognitive conditions — time pressure, forced trade-off,
+                projective anchoring, negative space, contrastive selection. The model doesn't
+                get a description of a character. It gets a command, in your voice, that it
+                has to obey.
               </p>
             </div>
           </div>
@@ -209,6 +211,27 @@ export default function Home() {
               <DaimonRow icon={Brain} label="recommends"
                 body="branch, spice, voice exemplars — never overrides. you can ignore every suggestion." />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── DAIMON TEASER ─────────────────────────────────────────── */}
+      <section className="relative border-t border-neutral-900">
+        <div className="mx-auto max-w-5xl px-6 py-24">
+          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-acid">
+            <span className="h-1.5 w-1.5 bg-acid animate-flicker" />
+            try it now
+          </div>
+          <h2 className="mt-4 font-display text-4xl font-extrabold uppercase tracking-tighter md:text-6xl">
+            Describe what<br />
+            <span className="text-acid">you need.</span>
+          </h2>
+          <p className="mt-4 max-w-xl font-mono text-sm text-neutral-500">
+            &gt; DAIMON reads your intent and shows you the soul it would build.
+            One line. Ten seconds. If it sounds right — forge it.
+          </p>
+          <div className="mt-8 max-w-2xl">
+            <DaimonTeaser />
           </div>
         </div>
       </section>

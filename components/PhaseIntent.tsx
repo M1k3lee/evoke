@@ -265,13 +265,13 @@ export function PhaseIntent({
                 key={lvl}
                 onClick={() => setSpice(lvl)}
                 className={cn(
-                  "flex flex-col gap-1 border p-2 text-left transition-colors",
+                  "flex flex-col gap-1 overflow-hidden border p-2 text-left transition-colors",
                   active ? activeColor : `${heat} text-neutral-400 hover:text-neutral-200`
                 )}
               >
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] tracking-widest opacity-60">[{lvl}]</span>
-                  <span className="font-display text-sm font-extrabold uppercase tracking-tight">{meta.label}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="shrink-0 font-mono text-[10px] tracking-widest opacity-60">[{lvl}]</span>
+                  <span className="truncate font-display text-xs font-extrabold uppercase tracking-tight">{meta.label}</span>
                 </div>
                 <span className="font-mono text-[10px] leading-snug opacity-80">{meta.oneLiner}</span>
               </button>

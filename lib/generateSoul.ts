@@ -29,7 +29,7 @@ export function generateSoulMarkdown(state: ForgeState): string {
   const constraints = dna ? dnaToConstraints(dna) : [];
   const tone = state.tasteTest ? tasteToTone(state.tasteTest) : tasteToTone("A");
   const utteranceSignature = generateUtterance(branch, state.utterance);
-  const dialogues = DIALOGUES[branch];
+  const dialogues = state.personalizedDialogues ?? DIALOGUES[branch];
 
   const shadowPriorities = SHADOW_DYADS.map((d) => {
     const choice = state.shadow[d.id];
@@ -120,7 +120,7 @@ function coreDirective(designation: string, realm: string, realmTone: string, to
 function voiceSection(
   designation: string,
   constraints: string[],
-  anchor: { exemplar: string; essence: string }
+  anchor: { exemplar: string; essence: string; aliveness?: string; withheld?: string }
 ): string {
   const lines = [
     "## VOICE — RULES YOU SPEAK BY",
@@ -132,10 +132,6 @@ function voiceSection(
     lines.push("- Speak plainly. No decoration. No throat-clearing.");
   } else {
     for (const c of constraints) {
-      // capitalize the first letter so "you" reads like an order.
-      // yes this is hacky. it's also the difference between "speak in
-      // lowercase" (suggestion) and "Speak in lowercase" (command).
-      // small thing, real difference in outputs.
       lines.push(`- ${capitalize(c)}`);
     }
   }
@@ -147,6 +143,16 @@ function voiceSection(
   if (anchor.essence) {
     lines.push(
       `- The load-bearing quality you must preserve: *${anchor.essence.trim()}*. If your reply lacks this, it is wrong.`
+    );
+  }
+  if (anchor.aliveness?.trim()) {
+    lines.push(
+      `- You come forward when: *${anchor.aliveness.trim()}*. You feel it arrive. When it does, you move — don't wait.`
+    );
+  }
+  if (anchor.withheld?.trim()) {
+    lines.push(
+      `- You almost never ${anchor.withheld.trim()}. Not because you can't. Because you save it.`
     );
   }
   lines.push("");

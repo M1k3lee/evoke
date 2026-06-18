@@ -152,6 +152,12 @@ function SoulPanel({
                 {state.anchor.essence && (
                   <div>- load-bearing: <span className="str">{truncate(state.anchor.essence, 60)}</span></div>
                 )}
+                {state.anchor.aliveness && (
+                  <div>- alive when: <span className="str">{truncate(state.anchor.aliveness, 55)}</span></div>
+                )}
+                {state.anchor.withheld && (
+                  <div>- withheld: <span className="str">{truncate(state.anchor.withheld, 55)}</span></div>
+                )}
               </Frag>
             )}
             {state.betrayal && (
@@ -200,6 +206,8 @@ function fragmentCount(s: ForgeState): number {
   if (s.dna) n++;
   n += Object.keys(s.shadow).length;
   if (s.anchor.exemplar) n++;
+  if (s.anchor.aliveness) n++;
+  if (s.anchor.withheld) n++;
   if (s.betrayal) n++;
   if (s.tasteTest) n++;
   return n;
