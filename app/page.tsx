@@ -118,6 +118,27 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ─── DAIMON TEASER ─────────────────────────────────────────── */}
+      <section className="relative border-t border-neutral-900">
+        <div className="mx-auto max-w-5xl px-6 py-24">
+          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-acid">
+            <span className="h-1.5 w-1.5 bg-acid animate-flicker" />
+            try it now
+          </div>
+          <h2 className="mt-4 font-display text-4xl font-extrabold uppercase tracking-tighter md:text-6xl">
+            Describe what<br />
+            <span className="text-acid">you need.</span>
+          </h2>
+          <p className="mt-4 max-w-xl font-mono text-sm text-neutral-500">
+            &gt; DAIMON reads your intent and shows you the soul it would build.
+            One line. Ten seconds. If it sounds right — forge it.
+          </p>
+          <div className="mt-8 max-w-2xl">
+            <DaimonTeaser />
+          </div>
+        </div>
+      </section>
+
       {/* ─── THE NINE PHASES ───────────────────────────────────────── */}
       <section className="relative border-t border-neutral-900">
         <div className="mx-auto max-w-7xl px-6 py-24">
@@ -211,27 +232,6 @@ export default function Home() {
               <DaimonRow icon={Brain} label="recommends"
                 body="branch, spice, voice exemplars — never overrides. you can ignore every suggestion." />
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── DAIMON TEASER ─────────────────────────────────────────── */}
-      <section className="relative border-t border-neutral-900">
-        <div className="mx-auto max-w-5xl px-6 py-24">
-          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-acid">
-            <span className="h-1.5 w-1.5 bg-acid animate-flicker" />
-            try it now
-          </div>
-          <h2 className="mt-4 font-display text-4xl font-extrabold uppercase tracking-tighter md:text-6xl">
-            Describe what<br />
-            <span className="text-acid">you need.</span>
-          </h2>
-          <p className="mt-4 max-w-xl font-mono text-sm text-neutral-500">
-            &gt; DAIMON reads your intent and shows you the soul it would build.
-            One line. Ten seconds. If it sounds right — forge it.
-          </p>
-          <div className="mt-8 max-w-2xl">
-            <DaimonTeaser />
           </div>
         </div>
       </section>
