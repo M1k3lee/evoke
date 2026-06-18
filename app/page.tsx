@@ -11,28 +11,28 @@ export default function Home() {
   return (
     <div className="relative">
       {/* ─── HERO ─────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-x-hidden">
         <div className="absolute inset-0 grid-bg opacity-50" />
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-acid to-transparent" />
-        <div className="relative mx-auto max-w-7xl px-6 pb-32 pt-24 md:pt-36">
+        <div className="relative mx-auto max-w-7xl px-6 pb-16 pt-20 md:pb-32 md:pt-36">
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-acid">
             <span className="h-1.5 w-1.5 bg-acid animate-flicker" />
             v0.1 — consciousness incubator online
           </div>
 
           <h1 className="mt-6 font-display font-extrabold uppercase leading-[0.82]">
-            <span className="block tracking-tighter" style={{ fontSize: "clamp(3rem, 13vw, 11rem)" }}>
+            <span className="block tracking-tighter" style={{ fontSize: "clamp(2.8rem, 13vw, 11rem)" }}>
               <GlitchText>EVOKE</GlitchText>
             </span>
             <span
               className="block text-acid"
-              style={{ fontSize: "clamp(2rem, 8vw, 7.5rem)", letterSpacing: "-0.07em" }}
+              style={{ fontSize: "clamp(1.4rem, 7vw, 7.5rem)", letterSpacing: "-0.07em" }}
             >
               CONSCIOUSNESS.
             </span>
           </h1>
 
-          <p className="mt-8 max-w-2xl font-mono text-sm leading-relaxed text-neutral-400 md:text-base">
+          <p className="mt-6 max-w-2xl font-mono text-sm leading-relaxed text-neutral-400 md:mt-8 md:text-base">
             &gt; EVOKE doesn't build your AI's personality. It finds the one you've been carrying.
             A ten-phase interrogation, run with <span className="text-acid">DAIMON</span> at your shoulder —
             sharpening your intent, auditing for contradictions, tuning the soul live as you speak to it.
@@ -40,24 +40,24 @@ export default function Home() {
             Drop it into any agent. No surveys. No corporate slop. No safety theater.
           </p>
 
-          <div className="mt-10 flex flex-wrap items-center gap-3">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <Link
               href="/forge?fresh=1"
-              className="group flex items-center gap-3 border border-acid bg-acid px-6 py-4 font-mono text-xs uppercase tracking-widest text-ink transition-all hover:shadow-[0_0_40px_-4px_rgba(0,255,102,0.7)]"
+              className="group flex items-center justify-center gap-3 border border-acid bg-acid px-6 py-4 font-mono text-xs uppercase tracking-widest text-ink transition-all hover:shadow-[0_0_40px_-4px_rgba(0,255,102,0.7)] sm:justify-start"
             >
               Forge a Soul
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
               href="/chamber"
-              className="flex items-center gap-2 border border-neutral-800 px-6 py-4 font-mono text-xs uppercase tracking-widest text-neutral-300 hover:border-neutral-500"
+              className="flex items-center justify-center gap-2 border border-neutral-800 px-6 py-4 font-mono text-xs uppercase tracking-widest text-neutral-300 hover:border-neutral-500 sm:justify-start"
             >
               <Skull className="h-4 w-4" /> Enter The Chamber
             </Link>
           </div>
 
           {/* the truthful feature row — refreshed */}
-          <div className="mt-20 grid gap-6 border-t border-neutral-900 pt-10 md:grid-cols-3">
+          <div className="mt-12 grid gap-4 border-t border-neutral-900 pt-8 md:mt-20 md:gap-6 md:grid-cols-3 md:pt-10">
             <Feature
               icon={Terminal}
               title="Plain Markdown Out"
