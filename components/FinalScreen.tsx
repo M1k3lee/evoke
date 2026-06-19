@@ -1,11 +1,13 @@
 "use client";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Copy, Download, UploadCloud, Check, RotateCcw, MessageSquare, Code2, Terminal } from "lucide-react";
+import Link from "next/link";
+import { Copy, Download, UploadCloud, Check, RotateCcw, MessageSquare, Code2, Terminal, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { evoke } from "@/components/Toaster";
 import { SummoningLoader } from "@/components/SummoningLoader";
 import { SUCCESS, ERROR, LOADING, GATE } from "@/constants/copy";
+// GATE kept for Skull/black-market section reference
 import { Skull } from "lucide-react";
 
 export function FinalScreen({
@@ -195,20 +197,23 @@ export function FinalScreen({
             <RotateCcw className="h-3.5 w-3.5" /> Forge another
           </button>
 
-          <button
-            onClick={() => evoke.gate(GATE.UPGRADE)}
-            className="mt-4 group relative overflow-hidden border border-yellow-400/40 bg-gradient-to-br from-yellow-400/5 to-transparent p-4 text-left"
+          <Link
+            href="/support"
+            className="mt-4 group relative overflow-hidden border border-yellow-400/40 bg-gradient-to-br from-yellow-400/5 to-transparent p-4 text-left block hover:border-yellow-400/70 transition-colors"
           >
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-yellow-400">
-              <Skull className="h-3 w-3" /> the black market
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-yellow-400">
+                <Skull className="h-3 w-3" /> the black market
+              </div>
+              <ArrowRight className="h-3 w-3 text-yellow-400/50 group-hover:text-yellow-400 transition-colors" />
             </div>
             <div className="mt-2 font-display text-sm font-extrabold uppercase tracking-tight text-neutral-100">
               {GATE.UPGRADE.title}
             </div>
             <div className="mt-1 font-mono text-[11px] leading-relaxed text-neutral-500">
-              &gt; {GATE.UPGRADE.body}
+              &gt; Feed the furnace. Unlock unthrottled engines, spice 3–4 routing, and sanctioned status.
             </div>
-          </button>
+          </Link>
 
           <div className="mt-4 border border-neutral-900 bg-neutral-950/60 p-4 font-mono text-[11px] leading-relaxed text-neutral-500">
             <div className="mb-1 uppercase tracking-widest text-neutral-400">
