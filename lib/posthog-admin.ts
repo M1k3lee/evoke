@@ -1,11 +1,12 @@
 const API_HOST = process.env.POSTHOG_API_HOST ?? "https://us.posthog.com";
 const PERSONAL_KEY = process.env.POSTHOG_PERSONAL_API_KEY ?? "";
+const PROJECT_ID = process.env.POSTHOG_PROJECT_ID ?? "@current";
 
 async function trend(
   events: object[],
   extra: object = {},
 ): Promise<any> {
-  const res = await fetch(`${API_HOST}/api/projects/@current/insights/trend/`, {
+  const res = await fetch(`${API_HOST}/api/projects/${PROJECT_ID}/insights/trend/`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${PERSONAL_KEY}`,
