@@ -13,16 +13,17 @@ export async function GET() {
   const projectId = process.env.POSTHOG_PROJECT_ID ?? "@current";
 
   try {
-    const res = await fetch(`${apiHost}/api/projects/${projectId}/insights/trend/`, {
+    const res = await fetch(`${apiHost}/api/projects/${projectId}/query/`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${personalKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        events: [{ id: "$pageview", math: "total" }],
-        date_from: "-7d",
-        interval: "day",
+        query: {
+          kind: "HogQLQuery",
+          query: "SELECT count() FROM events WHERE event = '$pageview' AND timestamp >= now() - INTERVAL 7 DAY",
+        },
       }),
     });
     const text = await res.text();
