@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Toaster } from "@/components/Toaster";
+import { Analytics } from "@vercel/analytics/next";
 
 const SITE_URL = "https://www.evoke.wtf";
 
@@ -65,6 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="relative">{children}</main>
         <Footer />
         <Toaster />
+        <Analytics />
       </body>
     </html>
   );
