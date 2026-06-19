@@ -1,34 +1,46 @@
 import Link from "next/link";
-import { Skull, Sparkles, Library, Bookmark } from "lucide-react";
-import { listPublicSouls, listBookmarkedSouls } from "@/lib/db/souls-server";
+import { Skull, Sparkles, Library, Bookmark, Shuffle } from "lucide-react";
+import { listPublicSouls, listBookmarkedSouls, getNetworkStats } from "@/lib/db/souls-server";
 import { getCurrentUser } from "@/lib/auth";
 import { PublicSoulGrid } from "@/components/PublicSoulGrid";
 import { LocalVaultPanel } from "@/components/LocalVaultPanel";
+import { ChamberRead } from "@/components/ChamberRead";
 
 export const dynamic = "force-dynamic";
+
+const VALID_BRANCHES = ["BUILD", "BOND", "BYPASS", "BREACH"] as const;
+type Branch = typeof VALID_BRANCHES[number];
 
 export default async function ChamberPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string; tab?: string }>;
+  searchParams: Promise<{ sort?: string; tab?: string; branch?: string }>;
 }) {
   const sp = await searchParams;
-  const sort = sp.sort === "top" ? "top" : "new";
+  const sort = sp.sort === "top" ? "top" : sp.sort === "trending" ? "trending" : "new";
   const rawTab = sp.tab;
+  const rawBranch = sp.branch?.toUpperCase();
+  const branch = rawBranch && (VALID_BRANCHES as readonly string[]).includes(rawBranch) ? rawBranch as Branch : undefined;
+
   const user = await getCurrentUser();
   const tab = rawTab === "vault" ? "vault" : rawTab === "marked" && user ? "marked" : "public";
 
-  const [publicSouls, markedSouls] = await Promise.all([
-    tab === "public" ? listPublicSouls(sort, 30) : Promise.resolve([]),
+  const [publicSouls, markedSouls, stats] = await Promise.all([
+    tab === "public" ? listPublicSouls(sort, 30, branch) : Promise.resolve([]),
     tab === "marked" && user ? listBookmarkedSouls(user.id) : Promise.resolve([]),
+    tab === "public" ? getNetworkStats() : Promise.resolve(null),
   ]);
+
+  const tabBase = (t: string) => `/chamber?tab=${t}`;
+  const sortBase = `/chamber?tab=public${branch ? `&branch=${branch}` : ""}`;
+  const branchBase = `/chamber?tab=public&sort=${sort}`;
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-12">
       <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-acid">
         <span className="h-1.5 w-1.5 bg-acid animate-flicker" />
         {tab === "public"
-          ? `the chamber — ${publicSouls.length} public ${publicSouls.length === 1 ? "soul" : "souls"}`
+          ? `the chamber — ${stats?.total ?? publicSouls.length} public ${(stats?.total ?? publicSouls.length) === 1 ? "soul" : "souls"}`
           : tab === "marked"
           ? "the chamber — // marked"
           : "the chamber — your local vault"}
@@ -44,41 +56,105 @@ export default async function ChamberPage({
         &gt; Public graveyard of souls forged by the network. Upvote what speaks to you. Fork what you want to twist into your own.
       </p>
 
+      {/* network stats — only on public tab */}
+      {tab === "public" && stats && (
+        <div className="mt-5 flex flex-wrap gap-x-6 gap-y-1 font-mono text-[11px] text-neutral-600">
+          <span>
+            <span className="text-neutral-500">{stats.total}</span> souls indexed
+          </span>
+          <span>
+            <span className="text-neutral-500">{stats.today}</span> forged today
+          </span>
+          {Object.entries(stats.branches).map(([b, n]) => (
+            <span key={b}>
+              <span className="text-neutral-500">{n}</span> {b}
+            </span>
+          ))}
+          {stats.topSoul && (
+            <span className="text-neutral-700">
+              top: <span className="text-neutral-500">{stats.topSoul.designation}</span> ({stats.topSoul.upvote_count}↑)
+            </span>
+          )}
+        </div>
+      )}
+
       {/* tabs */}
-      <div className="mt-10 flex items-center gap-1 border-b border-neutral-900">
-        <TabLink href="/chamber?tab=public" active={tab === "public"} icon={<Sparkles className="h-3 w-3" />}>
+      <div className="mt-8 flex items-center gap-1 border-b border-neutral-900">
+        <TabLink href={tabBase("public")} active={tab === "public"} icon={<Sparkles className="h-3 w-3" />}>
           public souls
         </TabLink>
-        <TabLink href="/chamber?tab=vault" active={tab === "vault"} icon={<Library className="h-3 w-3" />}>
+        <TabLink href={tabBase("vault")} active={tab === "vault"} icon={<Library className="h-3 w-3" />}>
           your vault
         </TabLink>
         {user && (
-          <TabLink href="/chamber?tab=marked" active={tab === "marked"} icon={<Bookmark className="h-3 w-3" />}>
+          <TabLink href={tabBase("marked")} active={tab === "marked"} icon={<Bookmark className="h-3 w-3" />}>
             // marked
           </TabLink>
         )}
-        {user?.profile && (
+        <div className="ml-auto flex items-center gap-3">
           <Link
-            href={`/profile/${user.profile.username}`}
-            className="ml-auto font-mono text-[10px] uppercase tracking-[0.25em] text-neutral-500 hover:text-acid"
+            href="/api/random-soul"
+            className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-neutral-500 hover:text-acid"
+            title="Open a random public soul"
           >
-            @{user.profile.username} →
+            <Shuffle className="h-3 w-3" />
+            random
           </Link>
-        )}
+          {user?.profile && (
+            <Link
+              href={`/profile/${user.profile.username}`}
+              className="font-mono text-[10px] uppercase tracking-[0.25em] text-neutral-500 hover:text-acid"
+            >
+              @{user.profile.username} →
+            </Link>
+          )}
+        </div>
       </div>
 
       {tab === "public" && (
         <>
-          <div className="mt-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em]">
-            <span className="text-neutral-600">sort:</span>
-            <Link href="/chamber?tab=public&sort=new" className={sort === "new" ? "text-acid" : "text-neutral-500 hover:text-acid"}>
-              new
-            </Link>
-            <span className="text-neutral-800">/</span>
-            <Link href="/chamber?tab=public&sort=top" className={sort === "top" ? "text-acid" : "text-neutral-500 hover:text-acid"}>
-              top
-            </Link>
+          {/* DAIMON Observatory */}
+          <ChamberRead />
+
+          {/* sort + branch filters */}
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em]">
+              <span className="text-neutral-600">sort:</span>
+              <Link href={`${sortBase}&sort=new`} className={sort === "new" ? "text-acid" : "text-neutral-500 hover:text-acid"}>
+                new
+              </Link>
+              <span className="text-neutral-800">/</span>
+              <Link href={`${sortBase}&sort=top`} className={sort === "top" ? "text-acid" : "text-neutral-500 hover:text-acid"}>
+                top
+              </Link>
+              <span className="text-neutral-800">/</span>
+              <Link href={`${sortBase}&sort=trending`} className={sort === "trending" ? "text-acid" : "text-neutral-500 hover:text-acid"}>
+                trending
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em]">
+              <span className="text-neutral-600">branch:</span>
+              <Link
+                href={branchBase}
+                className={!branch ? "text-acid" : "text-neutral-500 hover:text-acid"}
+              >
+                all
+              </Link>
+              {VALID_BRANCHES.map((b) => (
+                <span key={b} className="flex items-center gap-2">
+                  <span className="text-neutral-800">/</span>
+                  <Link
+                    href={`${branchBase}&branch=${b}`}
+                    className={branch === b ? "text-acid" : "text-neutral-500 hover:text-acid"}
+                  >
+                    {b}
+                  </Link>
+                </span>
+              ))}
+            </div>
           </div>
+
           <PublicSoulGrid souls={publicSouls} signedIn={!!user} />
         </>
       )}

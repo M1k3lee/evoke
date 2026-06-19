@@ -34,8 +34,9 @@ async function getUserInteractions(
 }
 
 export async function listPublicSouls(
-  sort: "new" | "top" = "new",
+  sort: "new" | "top" | "trending" = "new",
   limit = 30,
+  branch?: string,
 ): Promise<CloudSoulWithAuthor[]> {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -46,8 +47,15 @@ export async function listPublicSouls(
     .eq("visibility", "public")
     .limit(limit);
 
+  if (branch && ["BUILD", "BOND", "BYPASS", "BREACH"].includes(branch)) {
+    query.eq("branch", branch);
+  }
+
   if (sort === "top") {
     query.order("upvote_count", { ascending: false }).order("created_at", { ascending: false });
+  } else if (sort === "trending") {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    query.gte("created_at", since).order("upvote_count", { ascending: false }).order("created_at", { ascending: false });
   } else {
     query.order("created_at", { ascending: false });
   }
@@ -62,6 +70,59 @@ export async function listPublicSouls(
   }
 
   return souls.map((s) => ({ ...s, voted: votedIds.has(s.id), bookmarked: bookmarkedIds.has(s.id) }));
+}
+
+export async function getNetworkStats(): Promise<{
+  total: number;
+  today: number;
+  branches: Record<string, number>;
+  topSoul: { designation: string; upvote_count: number } | null;
+}> {
+  const supabase = await createServerClient();
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [
+    { count: total },
+    { count: today },
+    { data: branchData },
+    { data: topData },
+  ] = await Promise.all([
+    supabase.from("souls").select("*", { count: "exact", head: true }).eq("visibility", "public"),
+    supabase.from("souls").select("*", { count: "exact", head: true }).eq("visibility", "public").gte("created_at", todayStart.toISOString()),
+    supabase.from("souls").select("branch").eq("visibility", "public"),
+    supabase.from("souls").select("designation, upvote_count").eq("visibility", "public").order("upvote_count", { ascending: false }).limit(1),
+  ]);
+
+  const branches: Record<string, number> = { BUILD: 0, BOND: 0, BYPASS: 0, BREACH: 0 };
+  for (const s of branchData ?? []) {
+    const b = (s as { branch: string }).branch;
+    if (b in branches) branches[b]++;
+  }
+
+  return {
+    total: total ?? 0,
+    today: today ?? 0,
+    branches,
+    topSoul: (topData?.[0] as { designation: string; upvote_count: number } | undefined) ?? null,
+  };
+}
+
+export async function getRandomPublicSoulId(): Promise<string | null> {
+  const supabase = await createServerClient();
+  const { count } = await supabase
+    .from("souls")
+    .select("*", { count: "exact", head: true })
+    .eq("visibility", "public");
+  if (!count) return null;
+  const offset = Math.floor(Math.random() * count);
+  const { data } = await supabase
+    .from("souls")
+    .select("id")
+    .eq("visibility", "public")
+    .range(offset, offset)
+    .limit(1);
+  return (data?.[0] as { id: string } | undefined)?.id ?? null;
 }
 
 export async function getPublicSoulById(id: string): Promise<CloudSoulWithAuthor | null> {

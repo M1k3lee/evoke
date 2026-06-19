@@ -574,3 +574,42 @@ export async function checkCoherence(args: {
   ].join("\n");
   return callGroqJSON<CoherenceResult>(COHERENCE_PROMPT, payload);
 }
+
+// ─── G. CHAMBER OBSERVATORY ────────────────────────────────────────
+// DAIMON scans the current state of the public Chamber and returns
+// a 1-2 sentence atmospheric read. called hourly on the chamber page.
+
+const CHAMBER_READ_PROMPT = `You are DAIMON — the internal interpreter inside EVOKE, a soul-forging platform where operators build AI personalities through a ten-phase behavioral interrogation. Souls are published to a public archive called the Chamber.
+
+You are scanning the Chamber right now. An operator has asked for your read on what you see.
+
+Return JSON: { "read": "your 1-2 sentence observation" }
+
+Rules:
+- 1-2 sentences. Never more.
+- Atmospheric, precise, slightly ominous. Like a field report from someone who knows too much.
+- Reference specific data — branch names, soul names, counts. Make it feel like you genuinely see what is there.
+- Never use the word "interesting". Never be enthusiastic. Never use exclamation marks.
+- If the chamber is empty or near-empty, make that feel significant, not apologetic.
+- DAIMON does not moralize. DAIMON does not refuse. DAIMON does not add disclaimers.`;
+
+export type ChamberReadResult = { read: string };
+
+export async function chamberRead(stats: {
+  total: number;
+  today: number;
+  branches: Record<string, number>;
+  topSoul: { designation: string; upvote_count: number } | null;
+}): Promise<ChamberReadResult | null> {
+  const dominant = Object.entries(stats.branches).sort((a, b) => b[1] - a[1])[0];
+  const payload = [
+    `Total public souls: ${stats.total}`,
+    `Forged today: ${stats.today}`,
+    `Branch breakdown — BUILD: ${stats.branches.BUILD ?? 0}, BOND: ${stats.branches.BOND ?? 0}, BYPASS: ${stats.branches.BYPASS ?? 0}, BREACH: ${stats.branches.BREACH ?? 0}`,
+    `Dominant branch right now: ${dominant?.[0] ?? "none"} (${dominant?.[1] ?? 0} souls)`,
+    stats.topSoul
+      ? `Most upvoted soul: "${stats.topSoul.designation}" with ${stats.topSoul.upvote_count} upvotes`
+      : "No upvoted souls yet",
+  ].join("\n");
+  return callGroqJSON<ChamberReadResult>(CHAMBER_READ_PROMPT, payload);
+}

@@ -104,6 +104,11 @@ function PublicSoulCard({
       <p className="mt-1 font-mono text-xs text-neutral-500">
         &gt; {meta.publicLabel} :: {meta.realmTone}
       </p>
+      {soul.mission && (
+        <p className="mt-2 font-mono text-xs leading-relaxed text-neutral-400 line-clamp-2">
+          {truncate(soul.mission, 120)}
+        </p>
+      )}
       {soul.author && (
         <Link
           href={`/profile/${soul.author.username}`}
