@@ -2,12 +2,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard, AlertTriangle, Users, Skull, LogOut,
+  LayoutDashboard, AlertTriangle, Users, Skull, LogOut, BarChart2,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
   { href: "/admin/flagged", label: "Flagged", icon: AlertTriangle },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/souls", label: "All Souls", icon: Skull },

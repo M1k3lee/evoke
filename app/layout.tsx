@@ -4,6 +4,7 @@ import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import { Toaster } from "@/components/Toaster";
 import { Analytics } from "@vercel/analytics/next";
+import { PostHogProvider } from "@/components/PostHogProvider";
 
 const SITE_URL = "https://www.evoke.wtf";
 
@@ -62,11 +63,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen bg-ink text-neutral-200 antialiased selection:bg-acid selection:text-ink">
-        <Nav />
-        <main className="relative">{children}</main>
-        <Footer />
-        <Toaster />
-        <Analytics />
+        <PostHogProvider>
+          <Nav />
+          <main className="relative">{children}</main>
+          <Footer />
+          <Toaster />
+          <Analytics />
+        </PostHogProvider>
       </body>
     </html>
   );
