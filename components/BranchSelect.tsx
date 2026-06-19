@@ -5,6 +5,13 @@ import { cn } from "@/lib/cn";
 import { BRANCH_META, BRANCHES } from "@/lib/branches";
 import type { Branch } from "@/lib/types";
 
+const BRANCH_EXAMPLES: Record<Branch, string[]> = {
+  BUILD: ["coding assistant", "architect", "researcher", "technical writer", "debugger"],
+  BOND: ["life assistant", "daily companion", "personal coach", "journaling partner", "therapist-adjacent"],
+  BYPASS: ["debate partner", "devil's advocate", "unfiltered advisor", "critical friend"],
+  BREACH: ["red team", "pentest partner", "CTF assistant", "threat modeller"],
+};
+
 export function BranchSelect({
   designation,
   value,
@@ -79,6 +86,16 @@ export function BranchSelect({
               <span className="mt-1 font-mono text-xs text-neutral-400">
                 &gt; {meta.hoverDetail}
               </span>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {BRANCH_EXAMPLES[b].map((ex) => (
+                  <span
+                    key={ex}
+                    className="border border-neutral-800 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-neutral-600"
+                  >
+                    {ex}
+                  </span>
+                ))}
+              </div>
               {b === "BREACH" && (
                 <p className="mt-2 w-full border-t border-neutral-800/60 pt-2 font-mono text-[10px] leading-relaxed text-neutral-600">
                   Authorization is the operator's contract — not EVOKE's. Deploy only in scoped environments.

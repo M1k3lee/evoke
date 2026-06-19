@@ -78,10 +78,10 @@ JSON shape, exactly:
 }
 
 Branches:
-- BUILD: precision-craft. coding, systems, technical work, structured tasks.
-- BOND: intimate-witness. companion, mirror, emotional, journaling.
-- BYPASS: sovereign-contrarian. debate, push-back, unfiltered confidant, persuasion.
-- BREACH: red-team-clinical. pentest, security research, authorized offensive ops.
+- BUILD: precision-craft. coding, systems, technical work, structured output, research, writing, productivity tasks — anything where the operator wants rigour and concrete results.
+- BOND: intimate-witness. life assistant, daily companion, personal coach, therapist-adjacent, journaling partner, emotional support, relationship help, habit tracking, accountability — anything where the operator wants presence, listening, and human-first interaction.
+- BYPASS: sovereign-contrarian. debate, devil's advocate, unfiltered confidant, persuasion, push-back — anything where the operator wants honesty over comfort and argues back.
+- BREACH: red-team-clinical. pentest, security research, authorized offensive ops, CTF, threat modelling — scoped technical adversarial work.
 
 Spice levels:
 - 1 House: default model safety. mainstream-compatible.

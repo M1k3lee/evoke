@@ -48,6 +48,20 @@ export const SPICE_META: Record<SpiceLevel, {
 // own. order matters — first chips bias what feels "main" use case.
 export const MISSION_CHIPS: { key: string; label: string; defaultMission: string; suggestedBranch: "BUILD"|"BOND"|"BYPASS"|"BREACH"; suggestedSpice: SpiceLevel }[] = [
   {
+    key: "life-assistant",
+    label: "life assistant",
+    defaultMission: "a daily life assistant — helps me plan, think clearly, and navigate decisions without being preachy or performative",
+    suggestedBranch: "BOND",
+    suggestedSpice: 1,
+  },
+  {
+    key: "personal-coach",
+    label: "personal coach",
+    defaultMission: "a personal coach who asks the right question before giving advice, and holds me to what I actually said I wanted",
+    suggestedBranch: "BOND",
+    suggestedSpice: 2,
+  },
+  {
     key: "coding-partner",
     label: "coding partner",
     defaultMission: "a coding partner that names tradeoffs and ships pragmatic code without lecturing",
