@@ -8,8 +8,9 @@ export const metadata: Metadata = {
     title: "Forge a Soul — EVOKE",
     description:
       "Nine-phase psychological interrogation that compiles into an AI system prompt in your own voice.",
+    url: "https://www.evoke.wtf/forge",
   },
-  alternates: { canonical: "/forge" },
+  alternates: { canonical: "https://www.evoke.wtf/forge" },
 };
 
 export default function ForgeLayout({ children }: { children: React.ReactNode }) {

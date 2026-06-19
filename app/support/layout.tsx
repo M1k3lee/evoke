@@ -7,8 +7,9 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Feed the Furnace — EVOKE",
     description: "Coffee keeps the souls speaking. ~1.4¢ per Communion session.",
+    url: "https://www.evoke.wtf/support",
   },
-  alternates: { canonical: "/support" },
+  alternates: { canonical: "https://www.evoke.wtf/support" },
 };
 
 export default function SupportLayout({ children }: { children: React.ReactNode }) {

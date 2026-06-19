@@ -7,8 +7,9 @@ export const metadata: Metadata = {
   openGraph: {
     title: "The Chamber — EVOKE",
     description: "Your local vault of forged AI personalities. Speak to any of them again, live.",
+    url: "https://www.evoke.wtf/chamber",
   },
-  alternates: { canonical: "/chamber" },
+  alternates: { canonical: "https://www.evoke.wtf/chamber" },
 };
 
 export default function ChamberLayout({ children }: { children: React.ReactNode }) {

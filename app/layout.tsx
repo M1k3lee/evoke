@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Nav } from "@/components/Nav";
 import { Toaster } from "@/components/Toaster";
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://evoke.wtf").replace(/\/+$/, "");
+const SITE_URL = "https://www.evoke.wtf";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
