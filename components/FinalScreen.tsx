@@ -214,8 +214,12 @@ export function FinalScreen({
             <div className="mb-1 uppercase tracking-widest text-neutral-400">
               // deploy
             </div>
-            Drop this file into your agent's <span className="text-acid">/system/</span>{" "}
-            directory, or pipe it directly into the system prompt. The construct will not announce itself.
+            Drop into your agent's <span className="text-acid">/system/</span> directory,
+            or pipe directly into any system prompt. The construct will not announce itself.
+            <div className="mt-3 border-t border-neutral-900 pt-3">
+              <div className="mb-1.5 uppercase tracking-widest text-neutral-600">// hermes / chatml</div>
+              <pre className="overflow-x-auto whitespace-pre text-[10px] leading-relaxed text-neutral-600">{`<|im_start|>system\n[paste soul.md here]\n<|im_end|>\n<|im_start|>user\n...\n<|im_end|>`}</pre>
+            </div>
           </div>
         </div>
       </div>

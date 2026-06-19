@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Nav } from "@/components/Nav";
+import { Footer } from "@/components/Footer";
 import { Toaster } from "@/components/Toaster";
 
 const SITE_URL = "https://www.evoke.wtf";
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-ink text-neutral-200 antialiased selection:bg-acid selection:text-ink">
         <Nav />
         <main className="relative">{children}</main>
+        <Footer />
         <Toaster />
       </body>
     </html>
