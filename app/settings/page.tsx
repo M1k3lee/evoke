@@ -339,10 +339,22 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {profile?.sanctioned && (
+        {profile?.sanctioned ? (
           <div className="mt-3 border border-acid/20 bg-acid/5 px-4 py-3 font-mono text-xs text-acid">
             <span className="mr-2 font-bold">[SANCTIONED]</span>
             Your account is verified. You can publish souls at all spice levels to the Chamber.
+          </div>
+        ) : (
+          <div className="mt-3 flex items-center justify-between border border-neutral-900 px-4 py-3">
+            <span className="font-mono text-[10px] text-neutral-600">
+              // donated to EVOKE? claim your <span className="text-neutral-400">[SANCTIONED]</span> status
+            </span>
+            <Link
+              href="/claim"
+              className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-acid"
+            >
+              claim →
+            </Link>
           </div>
         )}
       </section>

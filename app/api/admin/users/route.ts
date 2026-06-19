@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   }
 
   // profiles
-  let query = db.from("profiles").select("id, username, display_name, bio, created_at");
+  let query = db.from("profiles").select("id, username, display_name, bio, created_at, sanctioned, sanctioned_bmac_email, sanctioned_claimed_at");
   if (search) query = query.or(`username.ilike.%${search}%,display_name.ilike.%${search}%`);
   const { data: profiles, error } = await query.order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -46,6 +46,9 @@ export async function GET(req: Request) {
     email: emailMap.get(p.id) ?? null,
     soul_count: soulCountMap.get(p.id) ?? 0,
     created_at: p.created_at,
+    sanctioned: p.sanctioned ?? false,
+    sanctioned_bmac_email: p.sanctioned_bmac_email ?? null,
+    sanctioned_claimed_at: p.sanctioned_claimed_at ?? null,
   }));
 
   if (exportCsv) {

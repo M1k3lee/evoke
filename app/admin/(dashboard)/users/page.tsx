@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Users, Download, Search, Loader2, Skull, ChevronLeft, ChevronRight,
+  Users, Download, Search, Loader2, Skull, ChevronLeft, ChevronRight, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -13,6 +13,9 @@ type User = {
   email: string | null;
   soul_count: number;
   created_at: string;
+  sanctioned: boolean;
+  sanctioned_bmac_email: string | null;
+  sanctioned_claimed_at: string | null;
 };
 
 export default function UsersPage() {
@@ -24,6 +27,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const LIMIT = 50;
 
   const load = useCallback(async () => {
@@ -52,6 +56,22 @@ export default function UsersPage() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  }
+
+  async function toggleSanctioned(userId: string, current: boolean) {
+    setTogglingId(userId);
+    // optimistic update
+    setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, sanctioned: !current } : u));
+    const res = await fetch("/api/admin/sanctioned", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, grant: !current }),
+    });
+    if (!res.ok) {
+      // revert
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, sanctioned: current } : u));
+    }
+    setTogglingId(null);
   }
 
   function toggleAll() {
@@ -158,7 +178,7 @@ export default function UsersPage() {
                   className="cursor-pointer accent-[#00FF66]"
                 />
               </th>
-              {["username", "email", "display name", "souls", "joined"].map((h) => (
+              {["username", "email", "display name", "status", "souls", "joined"].map((h) => (
                 <th
                   key={h}
                   className="py-3 pr-6 font-mono text-[9px] uppercase tracking-[0.25em] text-neutral-600"
@@ -209,6 +229,32 @@ export default function UsersPage() {
                   </td>
                   <td className="py-3 pr-6 font-mono text-xs text-neutral-500">
                     {u.display_name ?? <span className="text-neutral-700">—</span>}
+                  </td>
+                  <td className="py-3 pr-6">
+                    <div className="flex flex-col gap-1">
+                      <button
+                        onClick={() => toggleSanctioned(u.id, u.sanctioned)}
+                        disabled={togglingId === u.id}
+                        title={u.sanctioned ? "Revoke [SANCTIONED]" : "Grant [SANCTIONED]"}
+                        className={cn(
+                          "flex items-center gap-1.5 border px-2 py-1 font-mono text-[10px] uppercase tracking-widest transition-colors",
+                          u.sanctioned
+                            ? "border-acid/60 text-acid hover:border-red-500/60 hover:text-red-400"
+                            : "border-neutral-800 text-neutral-600 hover:border-acid/60 hover:text-acid",
+                        )}
+                      >
+                        <ShieldCheck className="h-2.5 w-2.5" />
+                        {u.sanctioned ? "[S]" : "grant"}
+                      </button>
+                      {!u.sanctioned && u.sanctioned_claimed_at && (
+                        <div
+                          className="font-mono text-[9px] text-yellow-500/70"
+                          title={`BMAC: ${u.sanctioned_bmac_email ?? "unknown"}`}
+                        >
+                          pending claim
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 pr-6">
                     <div className="flex items-center gap-1.5 font-mono text-xs text-neutral-400">
