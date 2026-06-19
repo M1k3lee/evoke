@@ -26,7 +26,7 @@ export default function Home() {
             </span>
             <span
               className="block text-acid"
-              style={{ fontSize: "clamp(1.4rem, 7vw, 7.5rem)", letterSpacing: "-0.07em" }}
+              style={{ fontSize: "clamp(1.1rem, 5.8vw, 7.5rem)", letterSpacing: "-0.06em" }}
             >
               CONSCIOUSNESS.
             </span>
