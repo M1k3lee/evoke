@@ -56,24 +56,6 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* the truthful feature row — refreshed */}
-          <div className="mt-12 grid gap-4 border-t border-neutral-900 pt-8 md:mt-20 md:gap-6 md:grid-cols-3 md:pt-10">
-            <Feature
-              icon={Terminal}
-              title="Plain Markdown Out"
-              body="The output is a versionable .md file. Pipe it into Claude, GPT, Gemini, any system-prompt slot."
-            />
-            <Feature
-              icon={Brain}
-              title="Ten Phases Deep"
-              body="Not a personality quiz. A behavioral capture — and DAIMON, our internal interpreter, sharpens every phase as you go."
-            />
-            <Feature
-              icon={MessageSquare}
-              title="Meet What You Made"
-              body="The moment a soul compiles, you speak to it live. Revise inline until it sounds like the one you've been carrying."
-            />
-          </div>
         </div>
       </section>
 
