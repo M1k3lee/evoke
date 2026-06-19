@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const ok = await getAdminSession();
-  if (!ok) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
   const personalKey = process.env.POSTHOG_PERSONAL_API_KEY;
   const apiHost = process.env.POSTHOG_API_HOST ?? "https://us.posthog.com";
 
