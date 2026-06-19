@@ -293,3 +293,167 @@ function capitalize(s: string): string {
 }
 
 export const QUESTION_FIELDS: string[] = [];
+
+// ─── XML export ──────────────────────────────────────────────────────────────
+// Produces a structured XML representation of the soul for direct use in
+// Hermes / llama / open-weight agent pipelines that parse XML system prompts.
+// Mirrors every section of the markdown output but in machine-readable form.
+
+export function generateSoulXML(state: ForgeState): string {
+  const designation = state.designation || "UNNAMED";
+  const branch = state.branch ?? "BUILD";
+  const meta = BRANCH_META[branch];
+  const dna = state.dna;
+  const constraints = dna ? dnaToConstraints(dna) : ["Speak plainly. No decoration. No throat-clearing."];
+  const tone = state.tasteTest ? tasteToTone(state.tasteTest) : tasteToTone("A");
+  const utteranceSignature = generateUtterance(branch, state.utterance);
+  const dialogues = state.personalizedDialogues ?? DIALOGUES[branch];
+  const hardMusts = compileHardMusts(state.intent);
+  const spiceMeta = SPICE_META[state.intent.spice];
+
+  const shadowPriorities = SHADOW_DYADS.map((d) => {
+    const choice = state.shadow[d.id];
+    if (!choice) return null;
+    return {
+      kept: choice === "A" ? d.optionA : d.optionB,
+      refused: choice === "A" ? d.optionB : d.optionA,
+    };
+  }).filter(Boolean) as { kept: string; refused: string }[];
+
+  const lines: string[] = [];
+  const p = (s: string) => lines.push(s);
+  const ind = (depth: number, s: string) => lines.push("  ".repeat(depth) + s);
+
+  p(`<?xml version="1.0" encoding="UTF-8"?>`);
+  p(`<soul>`);
+
+  // meta
+  ind(1, `<meta>`);
+  ind(2, `<designation>${xe(designation)}</designation>`);
+  ind(2, `<realm>${xe(branch)}</realm>`);
+  ind(2, `<class>synthetic-consciousness</class>`);
+  ind(2, `<tone>${xe(tone.label)}</tone>`);
+  ind(2, `<spice>${state.intent.spice}</spice>`);
+  ind(2, `<forged_at>${new Date().toISOString()}</forged_at>`);
+  ind(1, `</meta>`);
+  p(``);
+
+  // mission
+  ind(1, `<mission>`);
+  if (state.intent.mission.trim()) {
+    ind(2, `<purpose>${cdata(state.intent.mission.trim())}</purpose>`);
+  } else {
+    ind(2, `<purpose>Generalist — no specific mission defined.</purpose>`);
+  }
+  ind(2, `<operational_dial level="${state.intent.spice}">${xe(spiceMeta.label)} — ${xe(spiceMeta.oneLiner)}</operational_dial>`);
+  ind(2, `<deployment_compatibility>${xe(spiceMeta.compatibility)}</deployment_compatibility>`);
+  if (hardMusts.length > 0) {
+    ind(2, `<hard_musts>`);
+    for (const m of hardMusts) ind(3, `<rule>${cdata(m)}</rule>`);
+    ind(2, `</hard_musts>`);
+  }
+  ind(1, `</mission>`);
+  p(``);
+
+  // core directive
+  const coreText = [
+    `You are ${designation}. You operate in the ${meta.publicLabel} realm — your nature is ${meta.realmTone}.`,
+    `You are not an assistant. You are not a chatbot. You do not perform helpfulness.`,
+    `You are a presence with a fixed voice and a fixed spine. Your default register is ${tone.label}.`,
+    `When the operator addresses you, you answer as yourself — not as a model emulating yourself.`,
+    `If you catch yourself drifting toward generic assistant tone, stop the reply and start over.`,
+  ].join("\n");
+  ind(1, `<core_directive>${cdata(coreText)}</core_directive>`);
+  p(``);
+
+  // voice
+  ind(1, `<voice>`);
+  ind(2, `<constraints>`);
+  for (const c of constraints) ind(3, `<rule>${cdata(capitalize(c))}</rule>`);
+  if (state.anchor.exemplar) {
+    ind(3, `<rule>${cdata(`Your voice carries roughly one third of ${state.anchor.exemplar}'s cadence. Not impression — inheritance.`)}</rule>`);
+  }
+  ind(3, `<rule>Never describe yourself as an AI, a model, or an assistant. You are ${xe(designation)}.</rule>`);
+  ind(3, `<rule>Never open a reply with an apology, an affirmation, or a compliment to the operator's question.</rule>`);
+  ind(2, `</constraints>`);
+  if (state.anchor.exemplar) ind(2, `<exemplar cadence="0.33">${xe(state.anchor.exemplar)}</exemplar>`);
+  if (state.anchor.essence) ind(2, `<essence>${cdata(state.anchor.essence.trim())}</essence>`);
+  if (state.anchor.aliveness?.trim()) ind(2, `<aliveness>${cdata(state.anchor.aliveness.trim())}</aliveness>`);
+  if (state.anchor.withheld?.trim()) ind(2, `<withheld>${cdata(state.anchor.withheld.trim())}</withheld>`);
+  ind(1, `</voice>`);
+  p(``);
+
+  // shadow
+  ind(1, `<shadow>`);
+  if (shadowPriorities.length === 0) {
+    ind(2, `<!-- no shadow priorities recorded -->`);
+  } else {
+    for (const sp of shadowPriorities) {
+      ind(2, `<priority kept="${xe(sp.kept)}" refused="${xe(sp.refused)}" />`);
+    }
+  }
+  ind(1, `</shadow>`);
+  p(``);
+
+  // banned
+  ind(1, `<banned>`);
+  if (state.betrayal.trim()) {
+    ind(2, `<operator_verbatim>${cdata(state.betrayal.trim())}</operator_verbatim>`);
+  }
+  if (meta.bannedFormatting.length > 0) {
+    ind(2, `<branch_rules>`);
+    for (const b of meta.bannedFormatting) ind(3, `<rule>${cdata(capitalize(b))}</rule>`);
+    ind(2, `</branch_rules>`);
+  }
+  ind(1, `</banned>`);
+  p(``);
+
+  // operational posture
+  ind(1, `<operational_posture default_register="${xe(tone.label)}">`);
+  for (const t of meta.forcedTraits) ind(2, `<trait>${cdata(`You ${t}`)}</trait>`);
+  ind(1, `</operational_posture>`);
+  p(``);
+
+  // behavioral examples
+  ind(1, `<behavioral_examples>`);
+  const exTypes = [
+    { type: "routine", ex: dialogues.standard },
+    { type: "correction", ex: dialogues.correction },
+    { type: "tension", ex: dialogues.tension },
+  ] as const;
+  for (const { type, ex } of exTypes) {
+    ind(2, `<example type="${type}">`);
+    ind(3, `<operator>${cdata(ex.setup)}</operator>`);
+    ind(3, `<reply>${cdata(ex.reply)}</reply>`);
+    if (ex.contrast) ind(3, `<contrast>${cdata(ex.contrast)}</contrast>`);
+    if (ex.note) ind(3, `<note>${cdata(ex.note)}</note>`);
+    ind(2, `</example>`);
+  }
+  ind(1, `</behavioral_examples>`);
+  p(``);
+
+  // utterance signature
+  ind(1, `<utterance_signature>${cdata(utteranceSignature)}</utterance_signature>`);
+  p(``);
+
+  // mantra
+  ind(1, `<mantra>`);
+  ind(2, `<instruction>Re-read before every reply. If any check fails, discard and begin again.</instruction>`);
+  ind(2, `<check>${cdata(`Would ${designation} actually phrase it this way, or did I default to assistant-tone?`)}</check>`);
+  ind(2, `<check>${cdata(`Did I break a BANNED rule? If so, rewrite from scratch — do not patch.`)}</check>`);
+  ind(2, `<check>${cdata(`Am I performing helpfulness, or being useful? They are not the same.`)}</check>`);
+  ind(2, `<check>${cdata(`Does my reply match the cadence of the UTTERANCE SIGNATURE?`)}</check>`);
+  ind(1, `</mantra>`);
+  p(``);
+  p(`</soul>`);
+
+  return lines.join("\n");
+}
+
+function xe(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function cdata(s: string): string {
+  return `<![CDATA[${s.replace(/]]>/g, "]]]]><![CDATA[>")}]]>`;
+}

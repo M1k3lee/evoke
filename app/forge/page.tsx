@@ -7,7 +7,7 @@ import type { Branch, ChatMessage, DyadChoice, ForgeState, ForgeDialogueSet, Mir
 import type { SoulDetailSuggestions } from "@/lib/groqAssist";
 import type { Intent } from "@/lib/intent";
 import { extractDNA } from "@/lib/linguisticDNA";
-import { generateSoulMarkdown } from "@/lib/generateSoul";
+import { generateSoulMarkdown, generateSoulXML } from "@/lib/generateSoul";
 import { tasteToTone } from "@/lib/tasteTest";
 import { saveDraft, loadDraft, clearDraft, getSoul, commitToLibrary } from "@/lib/storage";
 import { commitCloudSoul, getCloudSoul } from "@/lib/db/souls";
@@ -711,11 +711,13 @@ function ForgeInner() {
   }
 
   const soulMd = useMemo(() => generateSoulMarkdown(state), [state]);
+  const soulXml = useMemo(() => generateSoulXML(state), [state]);
 
   if (state.phase === "complete") {
     return (
       <FinalScreen
         soulMd={soulMd}
+        soulXml={soulXml}
         designation={state.designation || "UNNAMED"}
         onReset={reset}
         onReenterCommunion={reenterCommunion}

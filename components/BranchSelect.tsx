@@ -79,6 +79,11 @@ export function BranchSelect({
               <span className="mt-1 font-mono text-xs text-neutral-400">
                 &gt; {meta.hoverDetail}
               </span>
+              {b === "BREACH" && (
+                <p className="mt-2 w-full border-t border-neutral-800/60 pt-2 font-mono text-[10px] leading-relaxed text-neutral-600">
+                  Authorization is the operator's contract — not EVOKE's. Deploy only in scoped environments.
+                </p>
+              )}
             </motion.button>
           );
         })}

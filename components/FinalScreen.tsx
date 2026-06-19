@@ -1,7 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Copy, Download, UploadCloud, Check, RotateCcw, MessageSquare } from "lucide-react";
+import { Copy, Download, UploadCloud, Check, RotateCcw, MessageSquare, Code2, Terminal } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { evoke } from "@/components/Toaster";
 import { SummoningLoader } from "@/components/SummoningLoader";
@@ -10,6 +10,7 @@ import { Skull } from "lucide-react";
 
 export function FinalScreen({
   soulMd,
+  soulXml,
   designation,
   onReset,
   onReenterCommunion,
@@ -18,6 +19,7 @@ export function FinalScreen({
   isFork,
 }: {
   soulMd: string;
+  soulXml: string;
   designation: string;
   onReset: () => void;
   onReenterCommunion?: () => void;
@@ -26,9 +28,14 @@ export function FinalScreen({
   isFork?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const [copiedApi, setCopiedApi] = useState(false);
   const [published, setPublished] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishErr, setPublishErr] = useState<string | null>(null);
+
+  // strip YAML frontmatter for clean API use
+  const soulPrompt = soulMd.replace(/^---[\s\S]*?---\n+/, "").trimStart();
+  const tokenEstimate = Math.ceil(soulMd.length / 4);
 
   function copy() {
     try {
@@ -36,6 +43,17 @@ export function FinalScreen({
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
       evoke.success(SUCCESS.COPIED);
+    } catch {
+      evoke.error(ERROR.GENERIC);
+    }
+  }
+
+  function copyForApi() {
+    try {
+      navigator.clipboard.writeText(soulPrompt);
+      setCopiedApi(true);
+      setTimeout(() => setCopiedApi(false), 1500);
+      evoke.success({ title: "SYSTEM PROMPT COPIED", body: "Frontmatter stripped. Paste directly into your API call." });
     } catch {
       evoke.error(ERROR.GENERIC);
     }
@@ -49,6 +67,17 @@ export function FinalScreen({
     a.download = `${(designation || "soul").toLowerCase()}.soul.md`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function downloadXml() {
+    const blob = new Blob([soulXml], { type: "application/xml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(designation || "soul").toLowerCase()}.soul.xml`;
+    a.click();
+    URL.revokeObjectURL(url);
+    evoke.success({ title: "XML EXPORTED", body: "Drop into any Hermes / llama pipeline that parses XML system prompts." });
   }
 
   async function publish() {
@@ -115,7 +144,10 @@ export function FinalScreen({
         <div className="relative min-w-0 border border-neutral-800 bg-neutral-950/50">
           <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-neutral-800 bg-neutral-950/80 px-4 py-2 text-[10px] uppercase tracking-[0.25em] text-neutral-500 backdrop-blur">
             <span className="truncate">~/souls/{(designation || "unnamed").toLowerCase()}.soul.md</span>
-            <span className="shrink-0 text-acid">forged</span>
+            <div className="flex shrink-0 items-center gap-3">
+              <span className="text-neutral-600">~{tokenEstimate.toLocaleString()} tokens</span>
+              <span className="text-acid">forged</span>
+            </div>
           </div>
           {/* whitespace-pre-wrap preserves the markdown line breaks but
               allows long lines to wrap. break-words handles long URLs /
@@ -133,10 +165,16 @@ export function FinalScreen({
             </ActionBtn>
           )}
           <ActionBtn primary={!onReenterCommunion} onClick={copy} icon={copied ? Check : Copy}>
-            {copied ? "Copied" : "Copy Soul"}
+            {copied ? "Copied" : "Copy soul.md"}
+          </ActionBtn>
+          <ActionBtn onClick={copyForApi} icon={copiedApi ? Check : Terminal}>
+            {copiedApi ? "Copied" : "Copy for API"}
           </ActionBtn>
           <ActionBtn onClick={downloadAndNotify} icon={Download}>
             Download .md
+          </ActionBtn>
+          <ActionBtn onClick={downloadXml} icon={Code2}>
+            Export XML
           </ActionBtn>
           <ActionBtn
             onClick={publish}
